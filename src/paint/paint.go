@@ -1,6 +1,8 @@
 package paint
 
 import (
+	"unicode"
+
 	"github.com/orayew2002/gtui/src/colors"
 	"github.com/orayew2002/gtui/src/layout"
 	"github.com/orayew2002/gtui/src/render"
@@ -25,6 +27,9 @@ func paintBox(buf *render.Buffer, b *layout.Box) {
 	}
 
 	st := b.Style
+	if st.Shadow {
+		Shadow(buf, b.Frame, outerClip(buf, b))
+	}
 	Frame(buf, b.Frame, b.Clip, st)
 
 	if b.Node.Canvas != nil {
@@ -85,6 +90,17 @@ func Frame(buf *render.Buffer, frame, clip render.Rect, st style.Style) {
 		buf.SetGlyph(x, y, c)
 	}
 
+	caps := g.capL != 0 && (sides.Left > 0 || sides.Right > 0)
+	if caps && frame.H == 1 {
+		if sides.Left > 0 {
+			set(frame.X, frame.Y, g.capL)
+		}
+		if sides.Right > 0 && frame.W > 1 {
+			set(frame.Right()-1, frame.Y, g.capR)
+		}
+		return
+	}
+
 	if sides.Top > 0 {
 		for x := frame.X; x < frame.Right(); x++ {
 			set(x, frame.Y, g.topRune())
@@ -106,16 +122,16 @@ func Frame(buf *render.Buffer, frame, clip render.Rect, st style.Style) {
 		}
 	}
 
-	if sides.Top > 0 && sides.Left > 0 {
+	if (sides.Top > 0 || caps) && sides.Left > 0 {
 		set(frame.X, frame.Y, g.tl)
 	}
-	if sides.Top > 0 && sides.Right > 0 && frame.W > 1 {
+	if (sides.Top > 0 || caps) && sides.Right > 0 && frame.W > 1 {
 		set(frame.Right()-1, frame.Y, g.tr)
 	}
-	if sides.Bottom > 0 && sides.Left > 0 && frame.H > 1 {
+	if (sides.Bottom > 0 || caps) && sides.Left > 0 && frame.H > 1 {
 		set(frame.X, frame.Bottom()-1, g.bl)
 	}
-	if sides.Bottom > 0 && sides.Right > 0 && frame.W > 1 && frame.H > 1 {
+	if (sides.Bottom > 0 || caps) && sides.Right > 0 && frame.W > 1 && frame.H > 1 {
 		set(frame.Right()-1, frame.Bottom()-1, g.br)
 	}
 
@@ -163,6 +179,59 @@ func Hint(buf *render.Buffer, frame, clip render.Rect, st style.Style) {
 	buf.SetString(x, y, label, cell, line)
 }
 
+func Shadow(buf *render.Buffer, frame, clip render.Rect) {
+	if frame.Empty() {
+		return
+	}
+
+	right := render.Rect{X: frame.Right(), Y: frame.Y + 1, W: 1, H: frame.H}
+	bottom := render.Rect{X: frame.X + 1, Y: frame.Bottom(), W: frame.W, H: 1}
+
+	shade(buf, right.Intersect(clip))
+	shade(buf, bottom.Intersect(clip))
+}
+
+func shade(buf *render.Buffer, area render.Rect) {
+	if area.Empty() {
+		return
+	}
+
+	fallback := colors.Active().Line
+
+	for y := area.Y; y < area.Bottom(); y++ {
+		for x := area.X; x < area.Right(); x++ {
+			p := buf.At(x, y)
+			if p == nil {
+				continue
+			}
+
+			cell := render.Cell{Ch: '░', Attr: style.AttrDim}
+			cell.Fg, cell.HasFg = fallback, true
+			if p.HasBg {
+				cell.Bg, cell.HasBg = p.Bg, true
+				cell.Fg = darken(p.Bg)
+			}
+
+			*p = cell
+		}
+	}
+}
+
+func darken(c colors.Color) colors.Color {
+	return colors.RGB(c.R/2, c.G/2, c.B/2)
+}
+
+func outerClip(buf *render.Buffer, b *layout.Box) render.Rect {
+	p := b.Parent
+	if p == nil {
+		return render.Rect{W: buf.W, H: buf.H}
+	}
+	if p.Style.Overflow != style.OverflowVisible {
+		return p.Clip.Intersect(p.Content)
+	}
+	return p.Clip
+}
+
 type corners struct {
 	n     int
 	x, y  [4]int
@@ -178,6 +247,8 @@ func cutCorners(frame render.Rect, sides style.Edges, st style.Style) corners {
 
 	switch st.Border {
 	case style.BorderRounded, style.BorderSoft, style.BorderTight:
+	case style.BorderPill:
+		sides = style.Edges{Top: 1, Right: sides.Right, Bottom: 1, Left: sides.Left}
 	default:
 		return c
 	}
@@ -320,9 +391,64 @@ func paintText(buf *render.Buffer, b *layout.Box) {
 			if ink.Background.Set {
 				cell.Bg, cell.HasBg = ink.Background.Color, true
 			}
-			buf.SetString(b.Content.X+offset+run.X, y, run.Text, cell, clip)
+
+			x := b.Content.X + offset + run.X
+			if ink.Transform == style.TransformNone {
+				buf.SetString(x, y, run.Text, cell, clip)
+				continue
+			}
+			setTransformed(buf, x, y, run.Text, cell, clip, ink.Transform)
 		}
 	}
+}
+
+func setTransformed(buf *render.Buffer, x, y int, text string, proto render.Cell, clip render.Rect, t style.Transform) {
+	start := true
+
+	for _, r := range text {
+		g := transformRune(r, t, start)
+		start = !isWordRune(r)
+
+		w := render.RuneWidth(g)
+		if w == 0 {
+			continue
+		}
+		if x >= clip.Right() {
+			return
+		}
+
+		if clip.Contains(x, y) {
+			cell := proto
+			cell.Ch = g
+			buf.SetGlyph(x, y, cell)
+
+			if w == 2 && clip.Contains(x+1, y) {
+				cont := proto
+				cont.Ch, cont.Cont = 0, true
+				buf.SetGlyph(x+1, y, cont)
+			}
+		}
+
+		x += w
+	}
+}
+
+func transformRune(r rune, t style.Transform, start bool) rune {
+	switch t {
+	case style.TransformUpper:
+		return unicode.ToUpper(r)
+	case style.TransformLower:
+		return unicode.ToLower(r)
+	case style.TransformTitle:
+		if start {
+			return unicode.ToUpper(r)
+		}
+	}
+	return r
+}
+
+func isWordRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '\''
 }
 
 func paintScrollbar(buf *render.Buffer, b *layout.Box) {

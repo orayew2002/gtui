@@ -210,9 +210,14 @@ func measureFlex(b *Box, contentW, availH int, definiteH bool) {
 	st := b.Style
 	flow := flowChildren(b)
 
+	gap := st.RowGap()
+	if st.Direction == Row() {
+		gap = st.ColumnGap()
+	}
+
 	gaps := 0
 	if n := len(flow); n > 1 {
-		gaps = st.Gap * (n - 1)
+		gaps = gap * (n - 1)
 	}
 
 	for _, c := range b.Abs {
@@ -297,7 +302,7 @@ func measureFlex(b *Box, contentW, availH int, definiteH bool) {
 }
 
 func measureWrapped(b *Box, flow []*Box, contentW, availH int) {
-	gap := b.Style.Gap
+	gapX, gapY := b.Style.ColumnGap(), b.Style.RowGap()
 
 	lines := [][]*Box{}
 	line := []*Box{}
@@ -306,13 +311,13 @@ func measureWrapped(b *Box, flow []*Box, contentW, availH int) {
 	for _, c := range flow {
 		width := c.OuterW + c.Style.Margin.Horizontal()
 
-		if len(line) > 0 && used+gap+width > contentW {
+		if len(line) > 0 && used+gapX+width > contentW {
 			lines = append(lines, line)
 			line, used = []*Box{}, 0
 		}
 
 		if len(line) > 0 {
-			used += gap
+			used += gapX
 		}
 		used += width
 		line = append(line, c)
@@ -325,12 +330,12 @@ func measureWrapped(b *Box, flow []*Box, contentW, availH int) {
 	total := 0
 	for i, items := range lines {
 		if i > 0 {
-			total += gap
+			total += gapY
 		}
 
 		avail := contentW
 		if n := len(items); n > 1 {
-			avail -= gap * (n - 1)
+			avail -= gapX * (n - 1)
 		}
 		distribute(items, avail, true, contentW, availH)
 
@@ -498,7 +503,7 @@ func minContentHeight(b *Box) int {
 		}
 	}
 	if stacked && len(flow) > 1 {
-		inner += b.Style.Gap * (len(flow) - 1)
+		inner += b.Style.RowGap() * (len(flow) - 1)
 	}
 
 	return inner + b.Ins.Vertical()
@@ -612,7 +617,7 @@ func intrinsicWidth(b *Box, limit int) int {
 		if st.Display == style.DisplayFlex && st.Direction == Row() {
 			for i, c := range flowChildren(b) {
 				if i > 0 {
-					inner += st.Gap
+					inner += st.ColumnGap()
 				}
 				inner += intrinsicWidth(c, -1) + c.Style.Margin.Horizontal() + childInsets(c)
 			}
@@ -658,7 +663,7 @@ func naturalWidth(b *Box) int {
 
 		if row {
 			if i > 0 {
-				widest += b.Style.Gap
+				widest += b.Style.ColumnGap()
 			}
 			widest += own
 			continue

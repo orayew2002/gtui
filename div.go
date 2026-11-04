@@ -8,15 +8,35 @@ import (
 )
 
 type Component struct {
-	class   string
-	text    string
-	target  string
-	page    []Component
-	child   []Component
-	link    bool
-	onClick func(*Event)
-	build   func(*App) *Node
+	class    string
+	text     string
+	target   string
+	page     []Component
+	child    []Component
+	link     bool
+	onClick  func(*Event)
+	handlers []listener
+	build    func(*App) *Node
 }
+
+type listener struct {
+	event string
+	fn    func(*Event)
+}
+
+// On attaches a handler to the component itself, so it travels with the
+// description and comes back with every rebuild. It returns a copy: the
+// component it is called on is left alone.
+func (c Component) On(event string, fn func(*Event)) Component {
+	if event == "" || fn == nil {
+		return c
+	}
+
+	c.handlers = append(c.handlers[:len(c.handlers):len(c.handlers)], listener{strings.ToLower(event), fn})
+	return c
+}
+
+func (c Component) OnClick(fn func(*Event)) Component { return c.On("click", fn) }
 
 func Div(class string, child ...Component) Component {
 	return Component{class: class, child: child}
@@ -61,13 +81,13 @@ func (c Component) Node() *Node {
 
 func (c Component) node(a *App) *Node {
 	if c.build != nil {
-		return c.build(a)
+		return c.attach(c.build(a))
 	}
 
 	n := dom.NewElement("div")
 
 	class, id := splitClass(c.class)
-	if c.link {
+	if c.link || c.clickable() {
 		class = withClass(class, "focusable")
 	}
 	if class != "" {
@@ -84,9 +104,7 @@ func (c Component) node(a *App) *Node {
 		n.Append(child.node(a))
 	}
 
-	if c.onClick != nil {
-		n.On("click", c.onClick)
-	}
+	c.attach(n)
 
 	if c.link {
 		n.Set("href", c.target)
@@ -101,6 +119,35 @@ func (c Component) node(a *App) *Node {
 	}
 
 	return n
+}
+
+// attach wires the component's own handlers onto the node it just built, which
+// is what lets a plain div, a link and a build-backed control all take a click.
+func (c Component) attach(n *Node) *Node {
+	if n == nil {
+		return nil
+	}
+
+	if c.onClick != nil {
+		n.On("click", c.onClick)
+	}
+	for _, h := range c.handlers {
+		n.On(h.event, h.fn)
+	}
+
+	return n
+}
+
+func (c Component) clickable() bool {
+	if c.onClick != nil {
+		return true
+	}
+	for _, h := range c.handlers {
+		if h.event == "click" {
+			return true
+		}
+	}
+	return false
 }
 
 func splitClass(class string) (string, string) {

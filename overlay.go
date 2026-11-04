@@ -7,8 +7,10 @@ import (
 )
 
 const (
-	modalID = "gtui-modal"
-	toastID = "gtui-toast"
+	modalID    = "gtui-modal"
+	toastID    = "gtui-toast"
+	toastLife  = 2 * time.Second
+	toastStack = 3
 )
 
 func (a *App) Modal(title string, body ...Component) *App {
@@ -23,32 +25,47 @@ func (a *App) Modal(title string, body ...Component) *App {
 		}, body...)...,
 	)
 
+	node := panel.node(a)
+
 	layer.Clear()
-	layer.Append(panel.node(a))
+	layer.Append(node)
 	layer.RemoveClass("none")
 
-	a.modalOpen = true
-	a.beforeModal = a.focus
-
-	if first := firstFocusableNode(layer); first != nil {
-		a.Focus(first)
+	// a modal opened over a modal still returns to the page, not to the panel
+	// its own Clear just detached
+	if !a.modalOpen {
+		a.beforeModal = a.focus
 	}
+	a.modalOpen = true
+
+	first := firstFocusableNode(layer)
+	if first == nil {
+		node.AddClass("focusable")
+		first = node
+	}
+	a.Focus(first)
 
 	return a.Redraw()
 }
 
 func (a *App) CloseModal() *App {
-	layer := a.Query("#" + modalID)
-	if layer == nil {
+	if !a.modalOpen {
 		return a
 	}
-
-	layer.Clear()
-	layer.AddClass("none")
 	a.modalOpen = false
 
-	a.Focus(a.beforeModal)
+	if layer := a.Query("#" + modalID); layer != nil {
+		layer.Clear()
+		layer.AddClass("none")
+	}
+
+	restore := a.beforeModal
 	a.beforeModal = nil
+
+	if restore != nil && !a.attached(restore) {
+		restore = a.byID(restore.ID)
+	}
+	a.Focus(restore)
 
 	return a.Redraw()
 }
@@ -56,7 +73,7 @@ func (a *App) CloseModal() *App {
 func (a *App) ModalOpen() bool { return a.modalOpen }
 
 func (a *App) Toast(kind, message string) *App {
-	layer := a.layer(toastID, "absolute top-0 right-0 z-9 px-1")
+	layer := a.layer(toastID, "absolute top-0 right-0 z-9 px-1 col")
 
 	ink := "text-sky"
 	switch kind {
@@ -68,19 +85,27 @@ func (a *App) Toast(kind, message string) *App {
 		ink = "text-red"
 	}
 
-	layer.Clear()
-	layer.Append(Div("row rounded px-2 bg-panel "+ink, Text("nowrap", message)).node(a))
+	a.toastSeq++
+
+	toast := Div("row rounded px-2 bg-panel "+ink, Text("nowrap", message)).node(a)
+	toast.Set("id", toastID+"-"+itoa(a.toastSeq))
+
+	for len(layer.Children) >= toastStack {
+		layer.Children[0].Detach()
+	}
+
+	layer.Append(toast)
 	layer.RemoveClass("none")
 
-	go func() {
-		time.Sleep(2 * time.Second)
-		a.Do(func() {
-			if node := a.Query("#" + toastID); node != nil {
-				node.Clear()
-				node.AddClass("none")
-			}
-		})
-	}()
+	// each toast times out on its own node, so a later one cannot cut the
+	// earlier ones short
+	a.After(toastLife, func() {
+		toast.Detach()
+		if len(layer.Children) == 0 {
+			layer.AddClass("none")
+		}
+		a.Redraw()
+	})
 
 	return a.Redraw()
 }
@@ -123,45 +148,96 @@ func Dropdown(class, label string, items ...Component) Component {
 		class: class,
 		build: func(a *App) *Node {
 			base, id := splitClass(class)
-			base = withClass(base, "col")
+
+			// sizing belongs to the wrapper, everything else to the button, so
+			// colours, padding and a border radius land where they can be seen
+			outer, inner := controlClass(base, "row gap-1 focusable nowrap focus:bold")
 
 			wrap := dom.NewElement("div")
-			if base != "" {
-				wrap.Set("class", base)
-			}
-			if id != "" {
-				wrap.Set("id", id)
-			}
+			wrap.Set("class", outer)
 
 			button := dom.NewElement("div")
-			button.Set("class", "row gap-1 focusable nowrap")
+			button.Set("class", inner)
+			if id != "" {
+				button.Set("id", id)
+			}
 			button.Append(dom.NewText(label + " ▾"))
 
 			menu := dom.NewElement("div")
 			menu.Set("class", "col none rounded border bg-panel")
-			for _, item := range items {
-				menu.Append(item.node(a))
-			}
 
-			toggle := func(e *Event) {
-				if menu.HasClass("none") {
-					menu.RemoveClass("none")
-				} else {
-					menu.AddClass("none")
-				}
+			dismiss := func() {
+				menu.AddClass("none")
 				if a != nil {
+					a.Focus(button)
 					a.Redraw()
 				}
 			}
 
+			// a menu left open after focus moved on would float over whatever
+			// the user went to look at
+			closeIfAway := func(e *Event) {
+				if a == nil || menu.HasClass("none") {
+					return
+				}
+				if wrap.Contains(a.Focused()) {
+					return
+				}
+				menu.AddClass("none")
+				a.Redraw()
+			}
+
+			button.On("blur", closeIfAway)
+
+			for _, item := range items {
+				// closing before the handler runs keeps a modal it opens
+				// anchored to the button rather than to a hidden item
+				pick := item.onClick
+				item.onClick = func(e *Event) {
+					dismiss()
+					if pick != nil {
+						pick(e)
+					}
+				}
+
+				node := item.node(a)
+				node.On("blur", closeIfAway)
+				menu.Append(node)
+			}
+
+			menu.On("click", func(e *Event) { dismiss() })
+
+			toggle := func(e *Event) {
+				if !menu.HasClass("none") {
+					dismiss()
+					return
+				}
+
+				menu.RemoveClass("none")
+				if a == nil {
+					return
+				}
+
+				// an open menu owns the arrows, so it owns the focus too
+				if first := firstFocusableNode(menu); first != nil {
+					a.Focus(first)
+				}
+				a.Redraw()
+			}
+
 			button.On("click", toggle)
 			button.On("keydown", func(e *Event) {
-				switch {
-				case e.Key == "enter", e.Rune == ' ':
+				if e.Key == "enter" || e.Rune == ' ' {
 					e.StopPropagation()
 					toggle(e)
-				case e.Key == "esc":
-					menu.AddClass("none")
+				}
+			})
+
+			// esc reaches wrap from the button and from every item inside
+			wrap.On("keydown", func(e *Event) {
+				if e.Key == "esc" && !menu.HasClass("none") {
+					e.StopPropagation()
+					dismiss()
 				}
 			})
 

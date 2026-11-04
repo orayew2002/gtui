@@ -8,7 +8,7 @@
 
 <p align="center">
   A div is a box · classes are utilities · links swap a target div<br>
-  block &amp; flex layout · diffed cell rendering · themes · i18n · 60+ components
+  block &amp; flex layout · diffed cell rendering · themes · i18n · 110+ components · 198 icons
 </p>
 
 ```go
@@ -39,25 +39,36 @@ boxes, utility classes, flexbox, wrapping text, focus and keyboard routing — o
 that writes only the cells that actually changed.
 
 - **Simple.** `Div(class, children...)` is the whole idea. Ids live in the class string: `#main`.
-- **Fast.** A 120×40 frame with 220 nodes builds, lays out, paints and flushes in **~0.7 ms**;
-  painting and flushing allocate **nothing** per frame.
-- **Complete.** Tables, charts, forms, modals, images, animation, themes, translations.
+- **Fast.** A 120×40 frame with 220 nodes builds, lays out, paints and flushes in about a
+  millisecond. Painting it costs 17 µs and flushing a changed row 29 µs, both with **zero
+  allocations**, so a moving UI does not touch the collector.
+- **Complete.** Tables, charts, forms, dialogs, images, video, animation, themes and translations —
+  113 components and 198 icons, every one of them styled by the same classes.
 
 ```
- ╭───────────────┤n├╮ ╭──────────────────────────────────────────────────────────────╮
- │  ▣ panel  admin  │ │  movies                       en ru tk   ◐ theme   + create  │
- │ ╭──────────────╮ │ │  rows, status and encoding state                             │
- │ │ ⌕ search     │ │ ╰──────────────────────────────────────────────────────────────╯
- │ ╰──────────────╯ │
- │ MAIN             │ ╭───────────────────────────────────────────────────────────┤c├╮
- │  1 home          │ │╭──────────────────────────────────────────────────────────┤f├╮│
- │  y dynamic       │ ││ NAME             STORAGE   DURATION   SIZE     STATUS      ││
- │ CONTENT          │ ││──────────────────────────────────────────────────────────  ││
- │  2 movies        │ ││ first row        disk-01   1:52:10    2.1 GB   • ready     ││
- │  3 serials       │ ││ second row       disk-01   1:34:02    1.7 GB   • ready     ││
- │  4 books         │ ││ third row        disk-02   2:04:55    2.8 GB   • encoding  ││
- │  i widgets       │ │╰──────────────────────────────────────────────────────────  ││
- ╰──────────────────╯ ╰──────────────────────────────────────────────────────────────╯
+
+ ╭─────────────┤n├╮ ╭─────────────────────────────────────────────────────────────────────────────╮
+ │ ▌ gtui gallery │ │  tables                                                          ◐ theme    │
+ │ ────────────── │ │  data tables with zebra rows, actions and a pager                           │
+ │  1 buttons     │ ╰─────────────────────────────────────────────────────────────────────────────╯
+ │  2 inputs      │
+ │  3 pickers     │ ╭──────────────────────────────────────────────────────────────────────────┤c├╮
+ │  4 tables      │ │╭───────────────────────────────────────────────────────────────────────┤a├╮█│
+ │  5 lists       │ ││ people                                                       (  + new  ) │█│
+ │  6 feedback    │ ││ zebra rows, selectable rows, row actions and a pager                     │█│
+ │  7 charts      │ ││──────────────────────────────────────────────────────────────────────────│█│
+ │  8 media       │ ││ NAME                                ROLE      STATUS                     │█│
+ │  9 motion      │ ││──────────────────────────────────────────────────────────────────────────│││
+ │  0 layout      │ ││ Ada Lovelace                        analyst   ● ready     edit     del   │││
+ │  i icons       │ ││ Alan Turing                         engineer  ● pending   edit     del   │││
+ │  t themes      │ ││ Grace Hopper                        captain   ● ready     edit     del   │││
+ │  l languages   │ ││ Edsger Dijkstra                     professor ● failed    edit     del   │││
+ │  s style       │ ││──────────────────────────────────────────────────────────────────────────│││
+ │  e extras      │ ││ page 1 of 1                                         ‹ prev      next ›   │││
+ │  v views       │ │╰──────────────────────────────────────────────────────────────────────────╯││
+ │ ────────────── │ │                                                                            ││
+ │ ⌕ ctrl+p       │ │click a row, or edit and del on the right                                   ││
+ ╰────────────────╯ ╰─────────────────────────────────────────────────────────────────────────────╯
 ```
 
 Every box can own a jump key. `key-c` draws a `┤c├` tab in its top border, and pressing `c` moves
@@ -86,33 +97,58 @@ gtui.Href("px-1 current:bold key-1", "home", "#main", homePage())
 
 ```go
 app.Open("#main", moviesPage())   // one box
-app.Refresh()                     // the whole view
+app.Refresh()                     // the whole view, keeping values and focus
 ```
+
+## Styling, like Bootstrap
+
+Every component's look is a class away. The class you pass always wins over the component's own
+defaults, because classes apply left to right.
+
+```go
+gtui.Button("bg-accent text-canvas pill px-3 shadow", "Save", onSave)
+gtui.Button("border border-danger text-danger rounded-pill", "Delete", onDelete)
+gtui.Icon("text-warning", "star")
+gtui.IconButton("bg-success text-canvas rounded px-2", "check", "Approve", onApprove)
+gtui.Text("uppercase dim truncate", "a very long caption that gets cut cleanly")
+```
+
+- **colour** `bg-accent` `text-canvas` `border-danger` `bg-[#1c1c1c]` `bg-transparent` `opacity-50`
+- **radius** `rounded` `pill` `rounded-pill` `rounded-none` and the border styles below
+- **border** `border` `thick` `double` `dashed` `soft` `tight` `border-t|r|b|l|x|y`
+- **text** `bold` `dim` `italic` `underline` `strike` `uppercase` `lowercase` `capitalize`
+  `normal-case` `truncate` `nowrap` `pre`
+- **effects** `shadow` `shadow-none`
+- **state** prefix anything with `hover:` `focus:` `active:` `current:`
 
 ## Components
 
 | | |
 | --- | --- |
-| structure | `Div` `Row` `Column` `Center` `Spacer` `Text` `Card` `Grid` `Split` `List` `ListItem` `Divider` `Toolbar` |
-| icons | `Icon` `IconText` `IconNames` — 70 named glyphs |
-| navigation | `Href` `Tabs` `Breadcrumb` `Pagination` `Dropdown` `MenuItem` `Tree` `Accordion` `Stepper` `app.Palette` |
-| data | `DataTable` (toolbar, zebra, selectable rows, `RowActions`, footer, pager) `Table` `Col` `Cells` `Badge` `Pill` `Toggle` `Avatar` `KeyValue` `StatCard` `Chips` `Rating` `ScrollList` |
-| forms | `Input` `Password` `Number` `Email` `URL` `Phone` `Date` `Search` `TextArea` `Checkbox` `Radios` `Select` `Selector` `Autocomplete` `Range` `Switch` `Calendar` `Button` |
-| feedback | `Alert` `Spinner` `Progress` `Gauge` `Skeleton` `Hint` `StatusBar` `app.Modal` `app.Toast` |
-| charts | `BarChart` `Sparkline` `LineChart` `Donut` `Gauge` |
-| views | `CodeView` `Chat` `Logs` `Player` `SeekBar` `AddressBar` `Toolbar` |
-| media | `Image` `ImageFrom` `Backdrop` `BackdropFrom` `Viewer` `OpenClip` + `Clip.Frame` `Video` |
+| structure | `Div` `Row` `Column` `Center` `Centered` `Spacer` `Text` `Card` `Panel` `Window` `Grid` `Columns` `Split` `Divider` `Separator` `Toolbar` `Navbar` `Scrollbox` |
+| icons | `Icon` `IconText` `IconButton` `IconNames` `IconGlyph` `RegisterIcon` — 198 named glyphs, each exactly one cell wide |
+| navigation | `Href` `Tabs` `TabView` `Breadcrumb` `Pagination` `Dropdown` `MenuItem` `Tree` `TreeView` `Accordion` `Collapse` `Stepper` `Steps` `app.Palette` |
+| data | `DataTable` (toolbar, zebra, selectable rows, `RowActions`, footer, pager) `Table` `TableHead` `TableRow` `Col` `Cells` `List` `ListItem` `ListRow` `KeyValue` `StatCard` `Metric` `Chips` `Tag` `Badge` `Pill` `Toggle` `Avatar` `Rating` `Timeline` `ScrollList` |
+| forms | `Input` `Password` `Number` `Email` `URL` `Phone` `Date` `Search` `TextArea` `Checkbox` `Radios` `Select` `Selector` `Autocomplete` `Range` `Switch` `Calendar` `Button` `ButtonGroup` `Clickable` `Field` `InputGroup` |
+| feedback | `Alert` `Banner` `EmptyState` `Spinner` `Loader` `Progress` `Gauge` `Skeleton` `StatusDot` `Hint` `Kbd` `StatusBar` `app.Modal` `app.Toast` |
+| dialogs | `app.Confirm` `app.Alert` `app.Prompt` `app.Choose` `app.Busy` |
+| charts | `BarChart` `Sparkline` `LineChart` `Donut` `Gauge` `Progress` |
+| views | `CodeView` `Chat` `Logs` `AddressBar` `Toolbar` |
+| media | `Image` `Fit` `ImageFrom` `FitFrom` `Backdrop` `BackdropFrom` `Viewer` `OpenClip` `OpenClipSized` + `Clip.Frame` `Player` `SeekBar` `Video` `VideoPlayer` |
 | motion | `Marquee` `Typewriter` `Blink` `Pulse` `Wave` `Dots` `Equalizer` `app.Animate` `app.Every` `app.After` |
 
 ## Classes
 
 - layout `row` `col` `center` `block` `inline` `none` `flex-wrap` `absolute` `z-5`
 - size `w-20` `h-3` `full` `w-1/3` `w-50%` `min-w-10` `max-h-8` `grow` `shrink-0` `basis-10`
-- spacing `p-1` `px-2` `py-1` `pt-1` `m-1` `mx-2` `gap-1`
+- spacing `p-1` `px-2` `py-1` `pt-1` `m-1` `mx-2` `gap-1` `gap-x-2` `gap-y-1`
 - align `justify-center|between|around|evenly` · `items-*` · `self-*` · `text-left|center|right`
-- border `border` `rounded` `thick` `double` `dashed` `soft` `tight` `border-t|r|b|l|x|y` `border-accent`
-- color `bg-panel` `text-ink` `border-line` `text-danger` `bg-[#1c1c1c]`
-- text `bold` `dim` `italic` `underline` `strike` `nowrap` `pre`
+- border `border` `rounded` `pill` `rounded-pill` `rounded-none` `thick` `double` `dashed` `soft`
+  `tight` `border-t|r|b|l|x|y` `border-accent`
+- colour `bg-panel` `text-ink` `border-line` `text-danger` `bg-[#1c1c1c]` `bg-transparent` `opacity-50`
+- text `bold` `dim` `italic` `underline` `strike` `uppercase` `lowercase` `capitalize` `normal-case`
+  `truncate` `nowrap` `pre`
+- effects `shadow` `shadow-none`
 - overflow `clip` `scroll` `scroll-x` `visible` `focusable`
 - state `hover:` `focus:` `active:` `current:`
 
@@ -121,14 +157,52 @@ app.Refresh()                     // the whole view
 | key | action |
 | --- | --- |
 | `tab` `shift+tab` | move focus anywhere |
-| arrows | move inside the current box; scroll a `scroll` or `scroll-x` box |
-| `enter` `space` | activate a link, button, switch, row |
+| arrows | move inside the current box; open a picker and walk its list; scroll a `scroll` or `scroll-x` box |
+| `enter` `space` | activate a link, button, switch, row, menu item |
 | `key-x` class | press `x` to jump into that box (`┤x├` badge in its border, `key-hide` hides it) |
 | `pgup` `pgdn` `home` `end`, wheel | scroll vertically or sideways |
 | `← →` `home` `end` in a field | move the caret; `delete` and `backspace` edit in place |
 | paste | arrives as one `paste` event and lands at the caret |
-| `esc` | close a modal |
+| `esc` | close a modal, a dialog or an open picker |
 | `app.Bind("ctrl+p", fn)` | your own shortcut |
+
+Every control answers the keyboard alone: text fields edit in place and scroll their value to the
+caret, `Select`, `Selector` and `Autocomplete` open and walk their lists with the arrows, `Range`
+and `Calendar` move with the arrows, and a picker closes itself when focus leaves it.
+
+## Forms and dialogs
+
+```go
+gtui.Column("gap-1",
+	gtui.Field("", "Name", gtui.Input("w-full rounded border-line #name", "name", "full name")),
+	gtui.Field("", "Plan", gtui.Select("w-full rounded border-line #plan", "plan", "choose",
+		"free", "team", "business")),
+	gtui.InputGroup("",
+		gtui.Text("px-1 text-muted", "https://"),
+		gtui.Input("grow rounded border-line #site", "site", "example.com"),
+		gtui.Button("rounded border-accent text-accent", "check", onCheck),
+	),
+)
+
+app.OnInput("#name", func(e *gtui.Event) { app.Text("#hint", e.Value) })
+app.OnChange("#plan", func(e *gtui.Event) { app.Toast("info", e.Value) })
+
+name := app.Value("#name")
+app.SetValue("#plan", "team")
+all := app.Values()
+```
+
+Dialogs are one call and need no state of your own:
+
+```go
+app.Confirm("Delete row?", "This cannot be undone.", func() { remove(at) })
+app.Prompt("Rename", "name", "new name", func(v string) { rename(at, v) })
+app.Choose("Pick a language", []string{"go", "rust", "zig"}, func(v string) { use(v) })
+app.Alert("Saved", "All changes are on disk.")
+
+done := app.Busy("uploading")   // spinning modal
+defer done()
+```
 
 ## Pictures
 
@@ -136,13 +210,14 @@ Images decode to half-block cells — two pixels per character — so a 40×12 b
 in truecolor.
 
 ```go
-gtui.Image("rounded border-line", "poster.png", 40, 12)   // from a file
+gtui.Image("rounded border-line", "poster.png", 40, 12)   // stretch to the box
+gtui.Fit("rounded border-line", "poster.png", 40, 12)     // keep the aspect ratio
 gtui.ImageFrom("", rendered, 40, 12)                       // from an image.Image
 
 gtui.Backdrop("rounded", "cover.jpg", 40, 10,              // picture behind content
 	gtui.Column("px-1",
-		gtui.Text("bold text-canvas", "Garagum gijeleri"),
-		gtui.Text("text-canvas", "tk · 4k · 2.1 GB"),
+		gtui.Text("bold text-canvas", "Night sky"),
+		gtui.Text("text-canvas", "4k · 2.1 GB"),
 	),
 )
 
@@ -160,8 +235,8 @@ app.Every(clip.Delay(frame), func(tick int) {
 })
 ```
 
-Pair a clip (or any frame source) with `Player` for a full media view — title, clock, seek bar,
-volume and a queue.
+`Player` gives a music view — title, clock, seek bar, volume, queue — and `VideoPlayer` gives a
+video one with play, seek and fullscreen callbacks.
 
 ## Themes
 
@@ -190,7 +265,7 @@ gtui.LoadLanguages("locales")      // en.json, tk.json, ru.json
 gtui.SetFallback("en")
 
 app.View(shell)                    // register the builder once
-app.Language("tk")                 // rebuilds, keeps focus
+app.Language("tk")                 // rebuilds, keeps values and focus
 
 gtui.T("movies")                   // "filmler"
 gtui.T("action.create", "film")    // "+ film goş"
@@ -214,7 +289,7 @@ The diffing writer means a moving UI still sends only the cells that changed.
 
 ```sh
 go run ./app                   # the component gallery — one page per group
-go run ./app check             # drive every component and report pass/fail
+go run ./app check             # drive the gallery and report pass/fail per component
 go run ./examples/hello        # one centered card
 go run ./examples/dashboard    # stat cards, charts, a compact table
 go run ./examples/form         # inputs, selector, range, switch, toasts
@@ -229,27 +304,32 @@ can try each one by hand. Press the letter in a box's border to jump into it, th
 
 | page | what you can click |
 | --- | --- |
-| `1` buttons | buttons, icon buttons, dropdown, tabs, command palette |
-| `2` inputs | text, number, password, email, **text area**, switch, checkbox, search, set-from-code |
-| `3` pickers | selector, autocomplete, range, radios, **calendar** |
-| `4` tables | data table with zebra rows, selection, row **edit/delete** actions, footer, pager |
-| `5` lists | **tree**, accordion, 1000-row scroll list, key/value, chips, badges, rating |
-| `6` feedback | four alert kinds, toasts, modal, progress, gauge, spinner, skeleton |
+| `1` buttons | button variants in pill, shadow and colour, button groups, icon buttons, `Clickable` rows, dropdown, tabs, dialogs, command palette |
+| `2` inputs | text, number, password, email, url, phone, search, **text area**, checkbox, switch, `Field`, `InputGroup`, and a field watched with `app.OnInput` / `app.OnChange` |
+| `3` pickers | selector, autocomplete, select, range, radios, **calendar**, the `Choose` dialog |
+| `4` tables | data table with zebra rows, selection, row **edit/delete** actions, footer and pager, plus the same table built by hand from `TableHead` and `TableRow` |
+| `5` lists | **tree view** and static tree, accordion, collapse, scroll list, list rows, key/value, chips, tags, timeline, steps |
+| `6` feedback | four alert kinds, banner, empty state, toasts, a bare `app.Modal`, `Confirm` / `Prompt` / `Alert` / `Busy`, progress, gauge, spinner, loader, skeleton, status dots, badges, pills, toggle, rating, avatars |
 | `7` charts | bar chart, sparkline, line chart, gauges, donuts, stat cards |
-| `8` media | **picture viewer** with zoom, picture as a **backdrop**, **video player**, **music player** with queue and equalizer |
-| `9` motion | marquee, typewriter, blink, pulse, wave, equalizer, spinner |
-| `0` layout | rows, columns, wrapping grid, split, scroll in both directions, centering |
-| `i` icons | all 70 icons, in buttons and list rows |
-| `t` themes | every token swatch, dark/light/custom switching |
+| `8` media | **picture viewer** with zoom, `Image` / `Fit` / `ImageFrom` side by side, picture as a **backdrop**, a gif read back with `OpenClip`, **video player**, **music player** with queue and equalizer |
+| `9` motion | marquee, typewriter, blink, pulse, wave, dots, equalizer, spinner |
+| `0` layout | rows, columns, wrapping grid, split, scroll in both directions, centering, `Card`, target-swapping `Tabs` |
+| `i` icons | all 198 icons with a live filter and a pager, plus one glyph added with `RegisterIcon` |
+| `t` themes | every token swatch, dark/light/custom switching, the live theme name, and the `UseCursor` / `UseMouse` switches |
+| `l` i18n | three languages, the key table, `T` with arguments, fallback behaviour, and a language added at runtime with `AddLanguage` |
+| `s` style | borders, radius, shadow, text transforms, truncation, every colour token, spacing, sizing, alignment, state variants |
+| `e` extras | navbar, panel, window, banner, empty state, timeline, steps, metrics, separators, loaders, scrollbox, columns, kbd, tags |
+| `v` views | chat thread, coloured logs, code view with a gutter, address bar, toolbar, breadcrumb, stepper, pagination, status bar |
 
 The gallery is also the reference for laying out a real app:
 
 ```
-app/main.go          wiring: theme, routes, run
+app/main.go          wiring: theme, languages, routes, run
 app/routes.go        the page table and the command palette
 app/shell.go         sidebar, header, theme switch
 app/demo.go          tiny helpers used by every page
 app/page_*.go        one file per page
+app/locales/*.json   the gallery's own translations
 app/check.go         the self check behind `go run ./app check`
 ```
 
@@ -272,13 +352,15 @@ app.Add(sel, components...)
 app.Query(sel) / app.QueryAll(sel)
 app.Text(sel, text) / app.Class(sel, class, on)
 app.Value(sel) / app.SetValue(sel, v) / app.Values()
+app.OnClick(sel, fn) / app.OnChange(sel, fn) / app.OnInput(sel, fn) / app.OnKey(fn)
 app.Modal(title, body...) / app.CloseModal() / app.Toast(kind, msg) / app.Palette(title, actions...)
-app.Focus(node) / app.Select(sel) / app.Bind(key, fn) / app.QuitOn(keys...)
-app.Theme(t) / app.ToggleTheme() / app.Tokens(edit) / app.Language(code)
+app.Confirm(t, b, fn) / app.Alert(t, b) / app.Prompt(t, l, p, fn) / app.Choose(t, opts, fn) / app.Busy(l)
+app.Focus(node) / app.Focused() / app.Select(sel) / app.Bind(key, fn) / app.QuitOn(keys...)
+app.Theme(t) / app.ToggleTheme() / app.ThemeByName(n) / app.Tokens(edit) / app.Language(code)
 app.Animate(fps, fn) / app.Every(d, fn) / app.After(d, fn) / app.Do(fn)
 app.Size() / app.OnResize(fn) / app.Copy(text)   // viewport, resize, clipboard
-app.Press(key) / app.Type(text)                  // drive the UI from code or tests
-app.UseMouse(on) / app.UseCursor(on)   // mouse capture and the real caret
+app.Press(key) / app.Type(text) / app.Flush()    // drive the UI from code or tests
+app.UseMouse(on) / app.UseCursor(on)             // mouse capture and the real caret
 app.Render()                    // open the terminal and run
 app.Snapshot(w, h)              // render to plain text
 ```

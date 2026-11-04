@@ -3,6 +3,8 @@ package gtui
 import (
 	"strings"
 	"time"
+
+	"github.com/orayew2002/gtui/src/render"
 )
 
 func (a *App) Every(interval time.Duration, fn func(tick int)) func() {
@@ -26,7 +28,15 @@ func (a *App) Every(interval time.Duration, fn func(tick int)) func() {
 			case <-ticker.C:
 				tick++
 				at := tick
-				a.Do(func() { fn(at) })
+
+				// the handle has to win even while the task queue is full
+				select {
+				case a.tasks <- func() { fn(at) }:
+				case <-stop:
+					return
+				case <-a.stopCh:
+					return
+				}
 			}
 		}
 	}()
@@ -47,9 +57,14 @@ func (a *App) Animate(fps int, fn func(tick int)) func() {
 	return a.Every(time.Second/time.Duration(fps), fn)
 }
 
+// After runs fn on the UI goroutine once delay has elapsed. A zero or negative
+// delay runs fn on the next loop iteration, the way setTimeout(fn, 0) does.
 func (a *App) After(delay time.Duration, fn func()) {
-	if delay <= 0 || fn == nil {
+	if fn == nil {
 		return
+	}
+	if delay < 0 {
+		delay = 0
 	}
 
 	go func() {
@@ -65,20 +80,35 @@ func Marquee(class, text string, width, tick int) Component {
 	if width < 1 || text == "" {
 		return Text(class, text)
 	}
-
-	runes := []rune(text + "   ")
-	if len(runes) <= width {
+	if render.StringWidth(text) <= width {
 		return Text(join("nowrap", class), text)
 	}
 
-	offset := ((tick % len(runes)) + len(runes)) % len(runes)
-	window := make([]rune, 0, width)
+	runes := []rune(text + "   ")
+	count := len(runes)
+	offset := ((tick % count) + count) % count
 
-	for i := range width {
-		window = append(window, runes[(offset+i)%len(runes)])
+	var sb strings.Builder
+	cells := 0
+
+	for i := 0; cells < width && i < count+width; i++ {
+		r := runes[(offset+i)%count]
+		w := render.RuneWidth(r)
+
+		if w == 0 && cells == 0 {
+			continue
+		}
+		if cells+w > width {
+			// a wide rune would straddle the edge, so pad the cell instead
+			sb.WriteByte(' ')
+			break
+		}
+
+		sb.WriteRune(r)
+		cells += w
 	}
 
-	return Text(join("nowrap", class), string(window))
+	return Text(join("nowrap", class), sb.String())
 }
 
 func Typewriter(class, text string, tick int) Component {
@@ -94,7 +124,7 @@ func Typewriter(class, text string, tick int) Component {
 }
 
 func Blink(class, text string, tick int) Component {
-	if tick%2 == 1 {
+	if ((tick%2)+2)%2 == 1 {
 		return Text(join("nowrap dim", class), text)
 	}
 	return Text(join("nowrap", class), text)

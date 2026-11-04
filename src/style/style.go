@@ -64,6 +64,16 @@ const (
 	BorderSoft
 	BorderTight
 	BorderDashed
+	BorderPill
+)
+
+type Transform uint8
+
+const (
+	TransformNone Transform = iota
+	TransformUpper
+	TransformLower
+	TransformTitle
 )
 
 type DimKind uint8
@@ -161,16 +171,22 @@ type Style struct {
 	BorderColor Paint
 	Background  Paint
 	Foreground  Paint
+	Shadow      bool
 
 	Attr      Attrs
 	TextAlign Align
+	Transform Transform
 	NoWrap    bool
 	Pre       bool
 
-	Gap    int
-	Grow   int
-	Shrink int
-	Basis  Dim
+	Gap     int
+	GapX    int
+	GapY    int
+	HasGapX bool
+	HasGapY bool
+	Grow    int
+	Shrink  int
+	Basis   Dim
 
 	AlignSelf    Align
 	HasAlignSelf bool
@@ -203,6 +219,7 @@ func (s Style) inherit() Style {
 	out.Foreground = s.Foreground
 	out.Attr = s.Attr
 	out.TextAlign = s.TextAlign
+	out.Transform = s.Transform
 	out.NoWrap = s.NoWrap
 	out.Pre = s.Pre
 	return out
@@ -231,6 +248,20 @@ func (s Style) BorderWidths() Edges {
 		Bottom: clamp(s.BorderSides.Bottom),
 		Left:   clamp(s.BorderSides.Left),
 	}
+}
+
+func (s Style) ColumnGap() int {
+	if s.HasGapX {
+		return s.GapX
+	}
+	return s.Gap
+}
+
+func (s Style) RowGap() int {
+	if s.HasGapY {
+		return s.GapY
+	}
+	return s.Gap
 }
 
 func (s Style) Gutter() int {

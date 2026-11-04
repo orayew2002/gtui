@@ -18,12 +18,9 @@ func Accordion(class string, sections ...Section) Component {
 		class: class,
 		build: func(a *App) *Node {
 			base, id := splitClass(class)
-			base = withClass(base, "col")
 
 			wrap := dom.NewElement("div")
-			if base != "" {
-				wrap.Set("class", base)
-			}
+			wrap.Set("class", join("col", base))
 			if id != "" {
 				wrap.Set("id", id)
 			}
@@ -43,6 +40,9 @@ func Accordion(class string, sections ...Section) Component {
 
 				head := dom.NewElement("div")
 				head.Set("class", "row gap-1 focusable focus:bold border-b border-line")
+				if section.Key != "" {
+					head.AddClass("key-" + section.Key)
+				}
 
 				title := section.Title
 				render := func() {
@@ -95,45 +95,83 @@ func Accordion(class string, sections ...Section) Component {
 	}
 }
 
-type Node2 struct {
+type TreeNode struct {
 	Label    string
-	Children []Node2
+	Value    string
+	Icon     string
 	Open     bool
+	Children []TreeNode
 }
 
-func Tree(class string, roots ...Node2) Component {
+type TreeOptions struct {
+	Class    string
+	Roots    []TreeNode
+	OnSelect func(TreeNode)
+}
+
+func Tree(class string, roots ...TreeNode) Component {
+	return TreeView(TreeOptions{Class: class, Roots: roots})
+}
+
+func TreeView(opts TreeOptions) Component {
 	return Component{
-		class: class,
+		class: opts.Class,
 		build: func(a *App) *Node {
-			base, id := splitClass(class)
-			base = withClass(base, "col")
+			base, id := splitClass(opts.Class)
 
 			wrap := dom.NewElement("div")
-			if base != "" {
-				wrap.Set("class", base)
-			}
+			wrap.Set("class", join("col", base))
 			if id != "" {
 				wrap.Set("id", id)
+				wrap.Set("name", id)
 			}
 
-			var mount func(parent *Node, items []Node2, depth int)
+			var (
+				rows  []*Node
+				mount func(parent *Node, items []TreeNode, depth int)
+			)
 
-			mount = func(parent *Node, items []Node2, depth int) {
+			choose := func(row *Node, item TreeNode, value string) {
+				for _, other := range rows {
+					other.State.Current = other == row
+				}
+
+				wrap.Set("value", value)
+				row.Dispatch(&dom.Event{Type: "select", Target: row, Value: value})
+
+				if opts.OnSelect != nil {
+					opts.OnSelect(item)
+				}
+			}
+
+			mount = func(parent *Node, items []TreeNode, depth int) {
 				for _, item := range items {
 					branch := item
 
-					row := dom.NewElement("div")
-					row.Set("class", "row gap-1 focusable focus:bold")
+					value := branch.Value
+					if value == "" {
+						value = branch.Label
+					}
 
-					indent := dom.NewElement("div")
-					indent.Set("class", "nowrap dim")
-					indent.Append(dom.NewText(strings.Repeat("  ", depth)))
+					row := dom.NewElement("div")
+					row.Set("class", "row gap-1 focusable focus:bold current:bold")
+					if depth > 0 {
+						row.AddClass("pl-" + itoa(depth*2))
+					}
+					row.Set("value", value)
+					if id != "" && branch.Value != "" {
+						row.Set("id", id+"-"+branch.Value)
+					}
+					rows = append(rows, row)
 
 					children := dom.NewElement("div")
 					children.Set("class", "col")
 					if !branch.Open {
 						children.AddClass("none")
 					}
+
+					glyph, hasIcon := IconGlyph(branch.Icon)
+					leaf := len(branch.Children) == 0
 
 					mark := dom.NewElement("div")
 					mark.Set("class", "nowrap dim")
@@ -145,7 +183,9 @@ func Tree(class string, roots ...Node2) Component {
 					render := func() {
 						mark.Clear()
 						switch {
-						case len(branch.Children) == 0:
+						case leaf && hasIcon:
+							mark.Append(dom.NewText(glyph))
+						case leaf:
 							mark.Append(dom.NewText("·"))
 						case children.HasClass("none"):
 							mark.Append(dom.NewText("▸"))
@@ -155,31 +195,37 @@ func Tree(class string, roots ...Node2) Component {
 					}
 					render()
 
-					toggle := func() {
-						if len(branch.Children) == 0 {
-							return
-						}
-						if children.HasClass("none") {
+					activate := func() {
+						switch {
+						case leaf:
+							choose(row, branch, value)
+						case children.HasClass("none"):
 							children.RemoveClass("none")
-						} else {
+							render()
+						default:
 							children.AddClass("none")
+							render()
 						}
-						render()
 						if a != nil {
 							a.Redraw()
 						}
 					}
 
-					row.On("click", func(e *Event) { toggle() })
+					row.On("click", func(e *Event) { activate() })
 					row.On("keydown", func(e *Event) {
 						if e.Key == "enter" || e.Rune == ' ' {
 							e.StopPropagation()
-							toggle()
+							activate()
 						}
 					})
 
-					row.Append(indent)
 					row.Append(mark)
+					if hasIcon && !leaf {
+						icon := dom.NewElement("div")
+						icon.Set("class", "nowrap")
+						icon.Append(dom.NewText(glyph))
+						row.Append(icon)
+					}
 					row.Append(label)
 
 					parent.Append(row)
@@ -189,7 +235,7 @@ func Tree(class string, roots ...Node2) Component {
 				}
 			}
 
-			mount(wrap, roots, 0)
+			mount(wrap, opts.Roots, 0)
 			return wrap
 		},
 	}
@@ -256,19 +302,23 @@ func Chips(class string, labels ...string) Component {
 }
 
 func StatCard(class, label, value, note string) Component {
+	ink := inkOf(class)
+
 	return Div(join("col rounded border-line bg-panel px-2", class),
-		Text("text-muted dim nowrap", strings.ToUpper(label)),
-		Text("text-ink bold nowrap", value),
-		Text("text-muted nowrap", note),
+		Text(join("text-muted dim nowrap", ink), strings.ToUpper(label)),
+		Text("bold nowrap", value),
+		Text(join("text-muted nowrap", ink), note),
 	)
 }
 
 func KeyValue(class string, pairs ...[2]string) Component {
+	ink := inkOf(class)
 	rows := make([]Component, 0, len(pairs))
+
 	for _, pair := range pairs {
 		rows = append(rows, Div("row gap-1",
-			Text("grow text-muted nowrap", pair[0]),
-			Text("text-ink nowrap", pair[1]),
+			Text(join("grow text-muted nowrap", ink), pair[0]),
+			Text("nowrap", pair[1]),
 		))
 	}
 
@@ -296,8 +346,10 @@ func StatusBar(class string, left, right []Component) Component {
 }
 
 func Hint(class, key, label string) Component {
+	ink := inkOf(class)
+
 	return Div(join("row gap-1 nowrap", class),
-		Text("bold text-accent nowrap", key),
-		Text("text-muted nowrap", label),
+		Text(join("bold text-accent nowrap", ink), key),
+		Text(join("text-muted nowrap", ink), label),
 	)
 }

@@ -1,10 +1,12 @@
 package gtui
 
 import (
+	"math"
 	"strings"
 
 	"github.com/orayew2002/gtui/src/colors"
 	"github.com/orayew2002/gtui/src/dom"
+	"github.com/orayew2002/gtui/src/render"
 )
 
 type Bar struct {
@@ -25,24 +27,17 @@ func Progress(class string, value, max float64, width int) Component {
 }
 
 func Gauge(class string, value, max float64, width int) Component {
-	if width < 4 {
+	// one track cell, a gap and the widest label ("100%") is the true minimum
+	if width < 6 {
 		width = 10
 	}
 
-	percent := 0
-	if max > 0 {
-		percent = int(value / max * 100)
-	}
-
+	percent := int(ratio(value, max) * 100)
 	label := itoa(clampInt(percent, 0, 100)) + "%"
-	track := width - len(label) - 1
-	if track < 1 {
-		track = 1
-	}
 
 	return Div(join("row gap-1", class),
-		Progress("", value, max, track),
-		Text("nowrap", label),
+		Progress("", value, max, width-5),
+		Text("w-4 text-right nowrap", label),
 	)
 }
 
@@ -54,11 +49,11 @@ func BarChart(class string, bars []Bar, width int) Component {
 	max := 0.0
 	label := 0
 	for _, bar := range bars {
-		if bar.Value > max {
+		if bar.Value > max && !math.IsInf(bar.Value, 1) {
 			max = bar.Value
 		}
-		if len(bar.Label) > label {
-			label = len(bar.Label)
+		if w := render.StringWidth(bar.Label); w > label {
+			label = w
 		}
 	}
 
@@ -66,7 +61,7 @@ func BarChart(class string, bars []Bar, width int) Component {
 	for _, bar := range bars {
 		ink := bar.Color
 		if ink == "" {
-			ink = "text-sky"
+			ink = "text-accent"
 		}
 
 		rows = append(rows, Div("row gap-1",
@@ -86,10 +81,7 @@ func Sparkline(class string, values []float64) Component {
 
 	var sb strings.Builder
 	for _, value := range values {
-		level := 0
-		if span > 0 {
-			level = int((value - min) / span * float64(len(glyphs)-1))
-		}
+		level := int(norm(value, min, span) * float64(len(glyphs)-1))
 		sb.WriteRune(glyphs[clampInt(level, 0, len(glyphs)-1)])
 	}
 
@@ -101,6 +93,11 @@ func LineChart(class string, values []float64, width, height int) Component {
 		return Div(class)
 	}
 
+	ink, ok := inkFromClass(class)
+	if !ok {
+		ink = colors.Active().Accent
+	}
+
 	canvas := dom.NewCanvas(width, height)
 	min, max := bounds(values)
 	span := max - min
@@ -109,11 +106,7 @@ func LineChart(class string, values []float64, width, height int) Component {
 		index := x * len(values) / width
 		value := values[index]
 
-		level := 0
-		if span > 0 {
-			level = int((value - min) / span * float64(height*2-1))
-		}
-		level = clampInt(level, 0, height*2-1)
+		level := clampInt(int(norm(value, min, span)*float64(height*2-1)), 0, height*2-1)
 
 		row := height - 1 - level/2
 		glyph := '▄'
@@ -121,7 +114,7 @@ func LineChart(class string, values []float64, width, height int) Component {
 			glyph = '▀'
 		}
 
-		canvas.Set(x, row, dom.Pixel{Ch: glyph, Fg: colors.Sky, HasFg: true})
+		canvas.Set(x, row, dom.Pixel{Ch: glyph, Fg: ink, HasFg: true})
 	}
 
 	return canvasComponent(class, canvas)
@@ -160,16 +153,74 @@ func canvasComponent(class string, canvas *dom.Canvas, child ...Component) Compo
 	}
 }
 
+// inkFromClass reads the last text-* colour out of a class string, so a canvas
+// can paint itself in the colour the caller asked for.
+func inkFromClass(class string) (colors.Color, bool) {
+	var (
+		out   colors.Color
+		found bool
+	)
+
+	for _, token := range strings.Fields(class) {
+		value, ok := strings.CutPrefix(strings.TrimPrefix(token, "box-"), "text-")
+		if !ok {
+			continue
+		}
+		if inner, ok := strings.CutPrefix(value, "["); ok {
+			value = strings.TrimSuffix(inner, "]")
+		}
+		if c, ok := colors.Parse(value); ok {
+			out, found = c, true
+		}
+	}
+
+	return out, found
+}
+
 func scale(value, max float64, width int) int {
-	if max <= 0 || value <= 0 {
+	if width < 1 {
 		return 0
 	}
 
-	filled := int(value / max * float64(width))
-	if filled == 0 {
+	r := ratio(value, max)
+	if r <= 0 {
+		return 0
+	}
+
+	filled := int(r * float64(width))
+	if filled < 1 {
 		filled = 1
 	}
 	return clampInt(filled, 0, width)
+}
+
+// ratio clamps value/max into 0..1 before any int conversion, so NaN, infinity
+// and huge ratios cannot overflow into a negative number of cells.
+func ratio(value, max float64) float64 {
+	if !(max > 0) || !(value > 0) {
+		return 0
+	}
+	if value >= max {
+		return 1
+	}
+	return value / max
+}
+
+// norm places value inside min..min+span as a 0..1 ratio, clamped in float
+// space for the same reason as ratio.
+func norm(value, min, span float64) float64 {
+	if !(span > 0) {
+		return 0
+	}
+
+	r := (value - min) / span
+	if !(r > 0) {
+		return 0
+	}
+	if r > 1 {
+		return 1
+	}
+	return r
 }
 
 func bounds(values []float64) (float64, float64) {

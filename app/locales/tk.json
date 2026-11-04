@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "gtui galereýasy",
+    "tagline": "Go üçin terminal interfeýsleri"
+  },
+  "nav": {
+    "buttons": "düwmeler",
+    "inputs": "girişler",
+    "pickers": "saýlaýjylar",
+    "tables": "tablisalar",
+    "lists": "sanawlar",
+    "feedback": "habarlar",
+    "charts": "grafikler",
+    "media": "media",
+    "motion": "hereket",
+    "layout": "ýerleşiş",
+    "icons": "nyşanlar",
+    "themes": "temalar",
+    "i18n": "diller",
+    "style": "stil",
+    "extras": "goşmaçalar"
+  },
+  "i18n": {
+    "title": "diller",
+    "pick": "dil saýla",
+    "keys": "açarlar we terjimeler",
+    "format": "argumentli T",
+    "fallback": "ätiýaçlyk dil",
+    "live": "dil çalşylanda görnüş täzeden gurulýar"
+  },
+  "msg": {
+    "greeting": "Salam %s, %d täze habaryňyz bar",
+    "items": "%d sany saýlandy",
+    "saved": "ýazdyryldy"
+  }
+}

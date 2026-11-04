@@ -65,7 +65,7 @@ func scrollOffset(b *Box) int {
 		}
 	}
 	if n := len(flowChildren(b)); n > 1 && b.Style.Direction == style.Column {
-		flowH += b.Style.Gap * (n - 1)
+		flowH += b.Style.RowGap() * (n - 1)
 	}
 
 	b.ScrollMax = flowH - b.Content.H
@@ -134,14 +134,14 @@ func arrangeRow(b *Box, clip render.Rect, scroll int) {
 	for _, c := range flow {
 		used += c.OuterW + c.Style.Margin.Horizontal()
 	}
-	used += b.Style.Gap * (len(flow) - 1)
+	used += b.Style.ColumnGap() * (len(flow) - 1)
 
 	start, between := mainOffsets(b.Style.Justify, b.Content.W-used, len(flow))
 	x := b.Content.X + start
 
 	for i, c := range flow {
 		if i > 0 {
-			x += b.Style.Gap + between
+			x += b.Style.ColumnGap() + between
 		}
 		m := c.Style.Margin
 		x += m.Left
@@ -158,7 +158,7 @@ func arrangeWrapped(b *Box, clip render.Rect, scroll int) {
 
 	for i, line := range b.FlexLines {
 		if i > 0 {
-			y += b.Style.Gap
+			y += b.Style.RowGap()
 		}
 
 		used := 0
@@ -166,7 +166,7 @@ func arrangeWrapped(b *Box, clip render.Rect, scroll int) {
 			used += c.OuterW + c.Style.Margin.Horizontal()
 		}
 		if n := len(line); n > 1 {
-			used += b.Style.Gap * (n - 1)
+			used += b.Style.ColumnGap() * (n - 1)
 		}
 
 		start, between := mainOffsets(b.Style.Justify, b.Content.W-used, len(line))
@@ -175,7 +175,7 @@ func arrangeWrapped(b *Box, clip render.Rect, scroll int) {
 		tallest := 0
 		for j, c := range line {
 			if j > 0 {
-				x += b.Style.Gap + between
+				x += b.Style.ColumnGap() + between
 			}
 
 			m := c.Style.Margin
@@ -222,14 +222,14 @@ func arrangeColumn(b *Box, clip render.Rect, scroll int) {
 	for _, c := range flow {
 		used += c.OuterH + c.Style.Margin.Vertical()
 	}
-	used += b.Style.Gap * (len(flow) - 1)
+	used += b.Style.RowGap() * (len(flow) - 1)
 
 	start, between := mainOffsets(b.Style.Justify, b.Content.H-used, len(flow))
 	y := b.Content.Y + start - scroll
 
 	for i, c := range flow {
 		if i > 0 {
-			y += b.Style.Gap + between
+			y += b.Style.RowGap() + between
 		}
 		m := c.Style.Margin
 		y += m.Top

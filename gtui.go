@@ -19,6 +19,9 @@ import (
 
 const scrollStep = 3
 
+// paintedCaret is the glyph paintField draws at the caret.
+const paintedCaret = '▌'
+
 type Event = dom.Event
 
 type Node = dom.Node
@@ -48,6 +51,7 @@ type App struct {
 	cursor      bool
 	modalOpen   bool
 	beforeModal *dom.Node
+	toastSeq    int
 	view        func() Component
 
 	stopOnce sync.Once
@@ -84,6 +88,7 @@ func (a *App) HTML(components ...Component) *App {
 
 	a.focus = nil
 	a.hover = nil
+	a.resetOverlays()
 	return a.Redraw()
 }
 
@@ -97,6 +102,7 @@ func (a *App) Markup(src string) *App {
 
 	a.focus = nil
 	a.hover = nil
+	a.resetOverlays()
 	return a.Redraw()
 }
 
@@ -106,12 +112,14 @@ func (a *App) Set(sel string, components ...Component) *App {
 		return a
 	}
 
+	keep := a.focusID()
+
 	n.Clear()
 	for _, child := range a.nodes(components) {
 		n.Append(child)
 	}
 
-	a.dropDetachedFocus()
+	a.restoreFocus(keep)
 	return a.Redraw()
 }
 
@@ -121,9 +129,13 @@ func (a *App) Add(sel string, components ...Component) *App {
 		return a
 	}
 
+	keep := a.focusID()
+
 	for _, child := range a.nodes(components) {
 		n.Append(child)
 	}
+
+	a.restoreFocus(keep)
 	return a.Redraw()
 }
 
@@ -142,9 +154,13 @@ func (a *App) Select(sel string) *App {
 	return a.mark(node)
 }
 
+// mark clears the current flag on the links that share this one's target, so
+// every nav group (sidebar, tabs) keeps its own active item.
 func (a *App) mark(node *dom.Node) *App {
+	target := node.Get("href")
+
 	for _, link := range a.QueryAll("div") {
-		if link.Has("href") {
+		if link.Has("href") && link.Get("href") == target {
 			link.State.Current = false
 		}
 	}
@@ -153,22 +169,47 @@ func (a *App) mark(node *dom.Node) *App {
 	return a.Redraw()
 }
 
-func (a *App) dropDetachedFocus() {
+func (a *App) attached(n *dom.Node) bool { return descends(n, a.root) }
+
+func (a *App) byID(id string) *dom.Node {
+	if id == "" {
+		return nil
+	}
+	return a.Query("#" + id)
+}
+
+func (a *App) focusID() string {
 	if a.focus == nil {
+		return ""
+	}
+	return a.focus.ID
+}
+
+// restoreFocus hands focus to the node that replaced the focused one. Rebuilds
+// make fresh nodes, so the id is the only thing that survives; focus is dropped
+// only when nothing carries it any more.
+func (a *App) restoreFocus(id string) {
+	if a.focus == nil || a.attached(a.focus) {
 		return
 	}
 
-	for n := a.focus; n != nil; n = n.Parent {
-		if n == a.root {
-			return
-		}
+	if next := a.byID(id); next != nil {
+		a.Focus(next)
+		return
 	}
 
 	a.focus.State.Focus = false
 	a.focus = nil
 }
 
+func (a *App) resetOverlays() {
+	a.modalOpen = false
+	a.beforeModal = nil
+}
+
 func (a *App) Render() error {
+	defer a.Stop()
+
 	options := term.DefaultOptions()
 	options.Mouse = a.mouse
 	options.HideCursor = !a.cursor
@@ -197,6 +238,7 @@ func (a *App) Render() error {
 			a.frame()
 
 		case <-a.redrawCh:
+			a.drainTasks()
 			a.frame()
 
 		case <-t.Resized():
@@ -221,6 +263,8 @@ func (a *App) Render() error {
 }
 
 func (a *App) RenderTo(w io.Writer, width, height int) error {
+	a.drainTasks()
+
 	a.screen = render.NewScreen(w, width, height)
 	a.resize(width, height)
 	a.frame()
@@ -230,6 +274,7 @@ func (a *App) RenderTo(w io.Writer, width, height int) error {
 
 // resize tells the document how much room it has, then rebuilds a registered
 // view so pages that lay themselves out from app.Size() see the new size.
+// Refresh carries the state of every node with an id across that rebuild.
 func (a *App) resize(width, height int) {
 	if a.viewW == width && a.viewH == height {
 		return
@@ -238,7 +283,7 @@ func (a *App) resize(width, height int) {
 	a.viewW, a.viewH = width, height
 
 	if a.view != nil {
-		a.HTML(a.view())
+		a.Refresh()
 	}
 }
 
@@ -273,8 +318,20 @@ func (a *App) On(event string, fn func(*dom.Event)) *App {
 }
 
 func (a *App) OnClick(sel string, fn func(*dom.Event)) *App {
+	return a.onEach(sel, "click", fn)
+}
+
+func (a *App) OnChange(sel string, fn func(*dom.Event)) *App {
+	return a.onEach(sel, "change", fn)
+}
+
+func (a *App) OnInput(sel string, fn func(*dom.Event)) *App {
+	return a.onEach(sel, "input", fn)
+}
+
+func (a *App) onEach(sel, event string, fn func(*dom.Event)) *App {
 	for _, n := range a.QueryAll(sel) {
-		n.On("click", fn)
+		n.On(event, fn)
 	}
 	return a
 }
@@ -372,12 +429,7 @@ func (a *App) Copy(text string) *App {
 }
 
 func (a *App) Press(key string) *App {
-	rune_ := rune(0)
-	if runes := []rune(key); len(runes) == 1 {
-		rune_ = runes[0]
-	}
-
-	a.handleKey(term.Key{Name: strings.ToLower(key), Rune: rune_})
+	a.handleKey(pressKey(key))
 	return a
 }
 
@@ -386,6 +438,28 @@ func (a *App) Type(text string) *App {
 		a.Press(string(r))
 	}
 	return a
+}
+
+// pressKey names control characters the way the terminal decoder does, so
+// Type("a\nb") inserts a newline instead of typing an unknown key.
+func pressKey(key string) term.Key {
+	switch key {
+	case "\r", "\n":
+		return term.Key{Name: "enter", Rune: '\r'}
+	case "\t":
+		return term.Key{Name: "tab", Rune: '\t'}
+	case "\x7f":
+		return term.Key{Name: "backspace"}
+	case "\x1b":
+		return term.Key{Name: "esc"}
+	}
+
+	rune_ := rune(0)
+	if runes := []rune(key); len(runes) == 1 {
+		rune_ = runes[0]
+	}
+
+	return term.Key{Name: strings.ToLower(key), Rune: rune_}
 }
 
 func (a *App) Bind(key string, fn func()) *App {
@@ -414,14 +488,39 @@ func (a *App) Redraw() *App {
 	return a
 }
 
+// Do queues fn for the next Render loop pass, Snapshot, RenderTo or Flush. It
+// never blocks: with nothing draining the queue the stalest task is dropped to
+// make room, so a headless or stopped app cannot wedge its callers.
 func (a *App) Do(fn func()) {
 	if fn == nil {
 		return
 	}
+
 	select {
-	case a.tasks <- fn:
 	case <-a.stopCh:
+		return
+	default:
 	}
+
+	for range cap(a.tasks) + 1 {
+		select {
+		case a.tasks <- fn:
+			return
+		default:
+		}
+
+		select {
+		case <-a.tasks:
+		default:
+		}
+	}
+}
+
+// Flush runs every task queued with Do, After, Every and Animate on the calling
+// goroutine. Render, Snapshot and RenderTo do this for you.
+func (a *App) Flush() *App {
+	a.drainTasks()
+	return a
 }
 
 func (a *App) Stop() {
@@ -433,16 +532,26 @@ func (a *App) Focus(n *dom.Node) {
 		return
 	}
 
-	if a.focus != nil {
-		a.focus.State.Focus = false
-		a.focus.Dispatch(&dom.Event{Type: "blur", Target: a.focus})
+	prev := a.focus
+	if prev != nil {
+		prev.State.Focus = false
 	}
 
 	a.focus = n
 	if n != nil {
 		n.State.Focus = true
+	}
+
+	// blur reaches the old node once focus has already moved, so a handler can
+	// ask where it went: a dropdown keeps its list open while focus is still
+	// inside it and closes when focus leaves for good
+	if prev != nil {
+		prev.Dispatch(&dom.Event{Type: "blur", Target: prev})
+	}
+	if n != nil {
 		n.Dispatch(&dom.Event{Type: "focus", Target: n})
 	}
+
 	a.Redraw()
 }
 
@@ -455,9 +564,10 @@ func (a *App) Diagnostics() []style.Diagnostic {
 }
 
 func (a *App) Snapshot(width, height int) string {
+	a.drainTasks()
 	a.resize(width, height)
 
-	tree := a.build(width, height)
+	tree := a.layout(width, height)
 	if tree == nil {
 		return ""
 	}
@@ -516,13 +626,34 @@ func (a *App) build(width, height int) *layout.Box {
 	return tree
 }
 
+// layout lays the document out and, like the live loop, scrolls the focused
+// node into view, so a headless Snapshot shows what the screen shows.
+func (a *App) layout(width, height int) *layout.Box {
+	tree := a.build(width, height)
+	if tree == nil {
+		return nil
+	}
+
+	// a field cannot window its value around the caret until it knows how wide
+	// it ended up, and only layout knows that
+	if a.remeasureFields() {
+		tree = a.build(width, height)
+	}
+
+	if a.focusVisible() {
+		tree = a.build(width, height)
+	}
+
+	return tree
+}
+
 func (a *App) frame() {
 	if a.screen == nil {
 		return
 	}
 
 	w, h := a.screen.Size()
-	tree := a.build(w, h)
+	tree := a.layout(w, h)
 	if tree == nil {
 		return
 	}
@@ -533,24 +664,32 @@ func (a *App) frame() {
 	}
 	a.screen.Clear(blank)
 
-	if a.focusVisible() {
-		tree = a.build(w, h)
-		if tree == nil {
-			return
-		}
-		a.screen.Clear(blank)
-	}
-
 	paint.Paint(a.screen.Back(), tree)
 
-	if a.cursor {
-		a.placeCursor()
+	if err := a.screen.Flush(); err != nil {
+		a.fail(err)
+		return
 	}
 
-	if err := a.screen.Flush(); err != nil && a.err == nil {
-		a.err = err
-		a.Stop()
+	if !a.cursor {
+		return
 	}
+
+	// the caret escape has to reach the terminal after the cells it sits on,
+	// or the hardware cursor ends up wherever the diff stopped writing
+	a.placeCursor()
+	if err := a.screen.Flush(); err != nil {
+		a.fail(err)
+	}
+}
+
+func (a *App) fail(err error) {
+	if err == nil || a.err != nil {
+		return
+	}
+
+	a.err = err
+	a.Stop()
 }
 
 func (a *App) placeCursor() {
@@ -560,8 +699,44 @@ func (a *App) placeCursor() {
 		return
 	}
 
-	at := caret(a.focus)
-	a.screen.ShowCursorAt(box.Content.X+at, box.Content.Y)
+	line, col, ok := caretCell(a.focus)
+	if !ok {
+		a.screen.HideCursor()
+		return
+	}
+
+	// the terminal caret belongs on a cell the field really painted, and a
+	// clipping ancestor can cut that cell away even when it sits inside the
+	// field's own box
+	x, y := box.Content.X+col, box.Content.Y+line
+	if !box.Content.Intersect(box.Clip).Contains(x, y) {
+		a.screen.HideCursor()
+		return
+	}
+
+	a.screen.ShowCursorAt(x, y)
+}
+
+// caretCell finds the caret glyph the field painted and reports the row and
+// column it sits on, which is the one place that already accounts for text area
+// lines, wide runes, password bullets and the window a long value scrolls in.
+func caretCell(n *dom.Node) (int, int, bool) {
+	if len(n.Children) == 0 {
+		return 0, 0, false
+	}
+
+	text := n.Children[0]
+
+	shown := text.Text()
+	at := strings.IndexRune(shown, paintedCaret)
+	if at < 0 {
+		return 0, 0, false
+	}
+
+	before := shown[:at]
+	line := strings.Count(before, "\n") - text.ScrollY
+
+	return line, render.StringWidth(before[strings.LastIndexByte(before, '\n')+1:]), true
 }
 
 func (a *App) drainTasks() {

@@ -8,12 +8,19 @@ type glyphs struct {
 
 	top, bottom rune
 	left, right rune
+
+	capL, capR rune
 }
 
 func borderGlyphs(s style.BorderStyle) glyphs {
 	switch s {
 	case style.BorderRounded:
 		return glyphs{tl: '╭', tr: '╮', bl: '╰', br: '╯', h: '─', v: '│'}
+	case style.BorderPill:
+		return glyphs{
+			tl: '╭', tr: '╮', bl: '╰', br: '╯', h: '─', v: '│',
+			capL: '(', capR: ')',
+		}
 	case style.BorderThick:
 		return glyphs{tl: '┏', tr: '┓', bl: '┗', br: '┛', h: '━', v: '┃'}
 	case style.BorderDouble:

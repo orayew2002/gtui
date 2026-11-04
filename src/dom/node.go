@@ -149,6 +149,16 @@ func (n *Node) Set(key, value string) *Node {
 	return n
 }
 
+// Contains reports whether other is this node or sits somewhere beneath it.
+func (n *Node) Contains(other *Node) bool {
+	for at := other; at != nil; at = at.Parent {
+		if at == n {
+			return true
+		}
+	}
+	return false
+}
+
 func (n *Node) HasClass(name string) bool {
 	for _, c := range n.Classes {
 		if c == name {

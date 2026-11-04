@@ -19,37 +19,31 @@ func (a *App) handle(ev term.Event) {
 }
 
 func (a *App) handleKey(k term.Key) {
+	// a modified key never types a character, so alt+s stays a shortcut
+	// instead of landing an "s" in whatever field holds focus
+	typed := k.Rune
+	if k.Alt || k.Ctrl {
+		typed = 0
+	}
+
+	layer := a.modalLayer()
+
 	target := a.focus
+	if layer != nil && !descends(target, layer) {
+		target = layer
+	}
 	if target == nil {
 		target = a.root
 	}
 
-	event := &dom.Event{Type: "keydown", Target: target, Key: k.Name, Rune: k.Rune}
+	event := &dom.Event{Type: "keydown", Target: target, Key: k.Name, Rune: typed}
 	target.Dispatch(event)
 	if event.Stopped() {
 		return
 	}
 
-	if k.Name == "esc" && a.modalOpen {
-		a.CloseModal()
-		return
-	}
-
-	if a.modalOpen {
-		switch {
-		case k.Name == "tab":
-			a.focusWithin(a.modalFocusables(), 1)
-		case k.Name == "shift+tab":
-			a.focusWithin(a.modalFocusables(), -1)
-		case k.Name == "down", k.Name == "right":
-			a.focusWithin(a.modalFocusables(), 1)
-		case k.Name == "up", k.Name == "left":
-			a.focusWithin(a.modalFocusables(), -1)
-		case k.Name == "enter", k.Rune == ' ':
-			a.activateFocus()
-		case a.quitKeys[k.Name]:
-			a.Stop()
-		}
+	if layer != nil {
+		a.modalKey(k, typed, layer)
 		return
 	}
 
@@ -76,7 +70,7 @@ func (a *App) handleKey(k term.Key) {
 		}
 	}
 
-	if k.Rune == ' ' && a.activateFocus() {
+	if typed == ' ' && a.activateFocus() {
 		return
 	}
 
@@ -95,6 +89,53 @@ func (a *App) handleKey(k term.Key) {
 	if a.quitKeys[k.Name] {
 		a.Stop()
 	}
+}
+
+// modalLayer returns the layer of the modal that owns the keyboard. A rebuild
+// can take the layer away without CloseModal running, so a missing or hidden
+// layer also clears the flag instead of trapping every later key.
+func (a *App) modalLayer() *dom.Node {
+	if !a.modalOpen {
+		return nil
+	}
+
+	layer := a.Query("#" + modalID)
+	if layer == nil || layer.HasClass("none") {
+		a.resetOverlays()
+		return nil
+	}
+
+	return layer
+}
+
+func (a *App) modalKey(k term.Key, typed rune, layer *dom.Node) {
+	switch {
+	case k.Name == "esc":
+		a.CloseModal()
+	case k.Name == "tab", k.Name == "down", k.Name == "right":
+		a.focusWithin(a.modalFocusables(), 1)
+	case k.Name == "shift+tab", k.Name == "up", k.Name == "left":
+		a.focusWithin(a.modalFocusables(), -1)
+	case k.Name == "enter", typed == ' ':
+		if descends(a.focus, layer) {
+			a.activateFocus()
+		}
+	case a.quitKeys[k.Name]:
+		a.Stop()
+	}
+}
+
+func descends(n, root *dom.Node) bool {
+	if root == nil {
+		return false
+	}
+
+	for ; n != nil; n = n.Parent {
+		if n == root {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *App) jumpTo(key string) bool {
@@ -172,16 +213,37 @@ func (a *App) handlePaste(p term.Paste) {
 		return
 	}
 
-	for _, r := range p.Text {
-		if r == '\n' || r == '\r' {
-			if a.focus.Get("type") != InputArea {
+	field := a.focus
+	kind := field.Get("type")
+	runes := []rune(p.Text)
+	edited := false
+
+	for i := 0; i < len(runes); i++ {
+		key := &dom.Event{Rune: runes[i]}
+
+		// terminals end a pasted line with LF, CR or CRLF, and a field only
+		// takes a line break from the enter key
+		if runes[i] == '\n' || runes[i] == '\r' {
+			if runes[i] == '\r' && i+1 < len(runes) && runes[i+1] == '\n' {
+				i++
+			}
+			if kind != InputArea {
 				continue
 			}
+			key = &dom.Event{Key: "enter"}
 		}
-		editField(a.focus, &dom.Event{Rune: r}, a.focus.Get("type"))
+
+		if _, changed := editField(field, key, kind); changed {
+			edited = true
+		}
 	}
 
-	paintField(a.focus)
+	paintField(field)
+
+	if edited {
+		field.Dispatch(&dom.Event{Type: "input", Target: field, Value: field.Get("value")})
+	}
+
 	a.Redraw()
 }
 
@@ -433,11 +495,22 @@ func (a *App) focusableAncestor(b *layout.Box) *layout.Box {
 	return nil
 }
 
-func (a *App) scrollableAncestor(b *layout.Box) *layout.Box {
+// scrollingAncestor finds the scroll pane a box sits inside, or nil when it
+// sits in none.
+func scrollingAncestor(b *layout.Box) *layout.Box {
 	for ; b != nil; b = b.Parent {
 		if b.Node != nil && b.Style.Overflow == style.OverflowScroll && b.ScrollMax > 0 {
 			return b
 		}
+	}
+	return nil
+}
+
+// scrollableAncestor is scrollingAncestor for the wheel and the arrows, where
+// falling back to the one pane on screen is friendlier than doing nothing.
+func (a *App) scrollableAncestor(b *layout.Box) *layout.Box {
+	if found := scrollingAncestor(b); found != nil {
+		return found
 	}
 	return a.firstScrollable()
 }
@@ -467,7 +540,10 @@ func (a *App) focusVisible() bool {
 		return false
 	}
 
-	pane := a.scrollableAncestor(box.Parent)
+	// only a real ancestor can scroll the focused box into view: the fallback
+	// pane would be some unrelated box, and a pane cannot reveal itself, which
+	// used to walk a focused scroll pane back to the top one row per redraw
+	pane := scrollingAncestor(box.Parent)
 	if pane == nil || pane.Node == nil {
 		return false
 	}

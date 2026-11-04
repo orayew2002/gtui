@@ -14,11 +14,12 @@ var app *gtui.App
 
 func main() {
 	app = gtui.Init().Theme(colors.Dark)
+	languages()
+
 	app.View(shell)
 
 	app.On("click", onNavigate)
 	app.Bind("ctrl+p", openPalette)
-	app.Animate(8, onTick)
 
 	app.Select("#nav" + current().Key)
 
@@ -29,7 +30,25 @@ func main() {
 		return
 	}
 
+	// the self check drives onTick itself, so the timer starts only for the
+	// terminal, where it keeps the moving pages moving
+	app.Animate(8, onTick)
 	app.Render()
+}
+
+// languages loads app/locales when it is there, from the repo root or from the
+// app directory, so the i18n page has real languages to switch between.
+func languages() {
+	for _, dir := range []string{"app/locales", "locales"} {
+		if _, err := os.Stat(dir); err != nil {
+			continue
+		}
+		if err := gtui.LoadLanguages(dir); err != nil {
+			fmt.Fprintln(os.Stderr, "locales:", err)
+		}
+		gtui.SetFallback("en")
+		return
+	}
 }
 
 // snapshot prints one frame as text instead of starting the terminal, which

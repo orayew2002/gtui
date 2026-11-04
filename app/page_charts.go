@@ -17,25 +17,26 @@ func sine(n int) []float64 {
 }
 
 func pageCharts() gtui.Component {
+	bars, deep := chartSize()
+
 	return gtui.Column("grow gap-1",
-		gtui.Row("gap-1 grow",
+		gtui.Row("gap-1",
 			card("a", "bar chart",
 				gtui.BarChart("", []gtui.Bar{
 					{Label: "go", Value: 1284, Color: "text-accent"},
 					{Label: "rust", Value: 894, Color: "text-success"},
 					{Label: "zig", Value: 317, Color: "text-warning"},
 					{Label: "c", Value: 642, Color: "text-danger"},
-				}, 16),
+				}, bars),
 			),
 			card("b", "sparkline and line",
-				note("same data, two densities"),
 				gtui.Sparkline("text-accent", series),
-				gtui.LineChart("", series, 26, 5),
+				gtui.LineChart("", series, bars*2, deep),
 			),
 			card("d", "gauges",
-				gtui.Gauge("text-success", 8, 10, 16),
-				gtui.Gauge("text-warning", 5, 10, 16),
-				gtui.Gauge("text-danger", 2, 10, 16),
+				gtui.Gauge("text-success", 8, 10, bars),
+				gtui.Gauge("text-warning", 5, 10, bars),
+				gtui.Gauge("text-danger", 2, 10, bars),
 				gtui.Row("gap-1 items-center",
 					gtui.Donut("text-accent", 1, 4),
 					gtui.Donut("text-accent", 2, 4),
@@ -45,13 +46,20 @@ func pageCharts() gtui.Component {
 			),
 		),
 		gtui.Row("gap-1",
-			card("e", "stat cards",
-				gtui.Row("gap-1",
-					gtui.StatCard("grow", "requests", "18 402", "last hour"),
-					gtui.StatCard("grow", "errors", "12", "0.07 percent"),
-					gtui.StatCard("grow", "p95", "41 ms", "steady"),
-				),
-			),
+			gtui.StatCard("grow", "requests", "18 402", "last hour"),
+			gtui.StatCard("grow", "errors", "12", "0.07 percent"),
+			gtui.StatCard("grow", "p95", "41 ms", "steady"),
 		),
 	)
+}
+
+// chartSize keeps the drawings inside their cards: three cards share the width,
+// and the line chart takes the rows the stat cards leave over.
+func chartSize() (bars, deep int) {
+	width, height := room()
+
+	bars = min(max(width/3-10, 8), 26)
+	deep = min(max(height-12, 3), 10)
+
+	return bars, deep
 }

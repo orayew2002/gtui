@@ -44,7 +44,7 @@ func view() gtui.Component {
 		),
 		gtui.Row("grow gap-1",
 			gtui.Tree("w-20 shrink-0 px-1 border-r border-line",
-				gtui.Node2{Label: "gtui", Open: true, Children: []gtui.Node2{
+				gtui.TreeNode{Label: "gtui", Open: true, Children: []gtui.TreeNode{
 					{Label: "main.go"}, {Label: "div.go"}, {Label: "table.go"},
 				}},
 			),

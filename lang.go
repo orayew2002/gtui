@@ -133,7 +133,9 @@ func T(key string, args ...any) string {
 	if !ok {
 		phrase = key
 	}
-	if len(args) == 0 {
+	// a phrase without a verb must not be formatted, or a key the translator
+	// has not covered yet shows up as "items.count%!(EXTRA int=5)"
+	if len(args) == 0 || !strings.Contains(phrase, "%") {
 		return phrase
 	}
 
@@ -145,25 +147,84 @@ func (a *App) View(build func() Component) *App {
 	return a.Refresh()
 }
 
+// Refresh rebuilds the view. The rebuild makes fresh nodes, so for every node
+// that carries an id the state the user put there is carried over: the value
+// attribute, the checked mark, both scroll offsets and the focused id. State on
+// an id-less node has nothing to match on and is lost.
 func (a *App) Refresh() *App {
 	if a.view == nil {
 		return a
 	}
 
-	focused := ""
-	if a.focus != nil {
-		focused = a.focus.ID
-	}
+	kept := a.saveState()
+	focused := a.focusID()
 
 	a.HTML(a.view())
 
-	if focused != "" {
-		if node := a.Query("#" + focused); node != nil {
-			a.Focus(node)
-		}
+	a.loadState(kept)
+
+	if node := a.byID(focused); node != nil {
+		a.Focus(node)
 	}
 
 	return a.Redraw()
+}
+
+type nodeState struct {
+	value    string
+	hasValue bool
+	checked  bool
+	scrollY  int
+	scrollX  int
+}
+
+func (a *App) saveState() map[string]nodeState {
+	kept := map[string]nodeState{}
+
+	a.root.Walk(func(n *Node) bool {
+		if !n.IsElement() || n.ID == "" {
+			return true
+		}
+
+		kept[n.ID] = nodeState{
+			value:    n.Get("value"),
+			hasValue: n.Has("value"),
+			checked:  n.State.Checked,
+			scrollY:  n.ScrollY,
+			scrollX:  n.ScrollX,
+		}
+		return true
+	})
+
+	return kept
+}
+
+func (a *App) loadState(kept map[string]nodeState) {
+	if len(kept) == 0 {
+		return
+	}
+
+	a.root.Walk(func(n *Node) bool {
+		if !n.IsElement() || n.ID == "" {
+			return true
+		}
+
+		was, ok := kept[n.ID]
+		if !ok {
+			return true
+		}
+
+		n.ScrollY, n.ScrollX = was.scrollY, was.scrollX
+
+		if !was.hasValue || !n.Has("value") {
+			return true
+		}
+
+		n.Set("value", was.value)
+		n.State.Checked = was.checked
+		syncControl(n)
+		return true
+	})
 }
 
 func (a *App) Language(code string) *App {

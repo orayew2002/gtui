@@ -4,39 +4,50 @@ import "github.com/orayew2002/gtui"
 
 func pageButtons() gtui.Component {
 	return gtui.Column("grow gap-1",
-		gtui.Row("gap-1",
-			card("a", "buttons",
-				note("click or press enter"),
-				gtui.Row("gap-1 flex-wrap",
-					gtui.Button("rounded border-accent text-accent focus:bold", "primary", func(e *gtui.Event) {
-						say("btn-out", "primary clicked")
-					}),
-					gtui.Button("rounded border-line text-muted focus:bold", "secondary", func(e *gtui.Event) {
-						say("btn-out", "secondary clicked")
-					}),
-					gtui.Button("rounded border-danger text-danger focus:bold", "danger", func(e *gtui.Event) {
-						say("btn-out", "danger clicked")
-					}),
-				),
-				out("btn-out", "nothing clicked yet"),
+		gtui.Navbar("",
+			gtui.IconText("text-accent bold", "terminal", "gtui"),
+			gtui.IconButton("text-muted hover:text-ink", "search", "", func(e *gtui.Event) {
+				openPalette()
+			}),
+			gtui.IconButton("text-muted hover:text-ink", "bell", "", func(e *gtui.Event) {
+				app.Toast("info", "nothing new")
+			}),
+			gtui.Kbd("", "ctrl+p"),
+		),
+		card("a", "button variants",
+			note("one look per button, written only with classes"),
+			gtui.Row("gap-x-2 gap-y-1 items-center flex-wrap",
+				gtui.Button("pill bg-accent text-canvas border-accent", "primary", func(e *gtui.Event) {
+					say("btn-out", "primary clicked")
+				}),
+				gtui.Button("pill border-line text-muted", "secondary", func(e *gtui.Event) {
+					say("btn-out", "secondary clicked")
+				}),
+				gtui.Button("pill border-danger text-danger", "danger", func(e *gtui.Event) {
+					say("btn-out", "danger clicked")
+				}),
+				gtui.Button("rounded shadow bg-panel text-ink border-line uppercase", "shadow", func(e *gtui.Event) {
+					say("btn-out", "shadow clicked")
+				}),
 			),
-			card("b", "icon buttons",
-				note("the same button with an icon label"),
-				gtui.Row("gap-1 flex-wrap",
-					gtui.Button("rounded border-line focus:bold", "✎ edit", func(e *gtui.Event) {
-						say("icon-out", "edit")
-					}),
-					gtui.Button("rounded border-line focus:bold", "⌫ delete", func(e *gtui.Event) {
-						say("icon-out", "delete")
-					}),
-					gtui.Button("rounded border-line focus:bold", "⤓ save", func(e *gtui.Event) {
-						say("icon-out", "save")
-					}),
+			out("btn-out", "nothing clicked yet"),
+		),
+		cards(
+			card("b", "groups and clickables",
+				note("ButtonGroup joins buttons, Clickable wraps a row"),
+				gtui.ButtonGroup("",
+					gtui.IconButton("", "edit", "edit", func(e *gtui.Event) { say("icon-out", "edit") }),
+					gtui.IconButton("", "save", "save", func(e *gtui.Event) { say("icon-out", "save") }),
+					gtui.IconButton("text-danger", "trash", "delete", func(e *gtui.Event) { say("icon-out", "delete") }),
+				),
+				gtui.Clickable("pill px-2 gap-1 border-accent text-accent", func(e *gtui.Event) {
+					say("icon-out", "the whole row is the button")
+				},
+					gtui.Icon("", "star"),
+					gtui.Text("truncate", "rate this gallery"),
 				),
 				out("icon-out", "—"),
 			),
-		),
-		gtui.Row("gap-1",
 			card("d", "dropdown",
 				note("enter opens, arrows move, enter picks"),
 				gtui.Dropdown("#dd", "actions",
@@ -46,19 +57,36 @@ func pageButtons() gtui.Component {
 				),
 				out("dd-out", "—"),
 			),
-			card("e", "links and tabs",
-				note("links swap the box below"),
-				gtui.Tabs("", "#tab-out",
-					gtui.Tab{Key: "o", Label: "first", Page: []gtui.Component{gtui.Text("text-accent", "first page")}},
-					gtui.Tab{Key: "p", Label: "second", Page: []gtui.Component{gtui.Text("text-accent", "second page")}},
+		),
+		cards(
+			card("f", "tab view",
+				note("click a tab, or press o and p"),
+				gtui.TabView("#btn-tabs",
+					gtui.Tab{Key: "o", Icon: "file", Label: "first", Page: []gtui.Component{
+						gtui.Text("text-accent", "first page"),
+					}},
+					gtui.Tab{Key: "p", Icon: "folder", Label: "second", Page: []gtui.Component{
+						gtui.Text("text-accent", "second page"),
+					}},
 				),
-				gtui.Div("#tab-out", gtui.Text("text-accent", "first page")),
 			),
-			card("f", "palette",
-				note("ctrl+p anywhere, or click"),
-				gtui.Button("rounded border-accent text-accent focus:bold", "open palette", func(e *gtui.Event) {
-					openPalette()
-				}),
+			card("g", "dialogs",
+				note("each one takes focus and gives it back"),
+				gtui.Row("gap-x-2 gap-y-1 flex-wrap",
+					gtui.Button("pill border-accent text-accent", "prompt", func(e *gtui.Event) {
+						app.Prompt("rename", "new name", "disk-04", func(value string) {
+							say("btn-out", "renamed to %q", value)
+						})
+					}),
+					gtui.Button("pill border-danger text-danger", "confirm", func(e *gtui.Event) {
+						app.Confirm("delete the pool?", "every snapshot goes with it", func() {
+							say("btn-out", "pool deleted")
+						})
+					}),
+					gtui.Button("pill border-line text-muted", "palette", func(e *gtui.Event) {
+						openPalette()
+					}),
+				),
 				gtui.Hint("", "ctrl+p", "command palette"),
 			),
 		),

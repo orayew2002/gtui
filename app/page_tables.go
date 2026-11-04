@@ -12,31 +12,33 @@ var people = [][]string{
 func pageTables() gtui.Component {
 	rows := make([][]gtui.Component, 0, len(people))
 
-	for _, row := range people {
+	for _, person := range people {
 		rows = append(rows, []gtui.Component{
-			gtui.Text("", row[0]),
-			gtui.Text("text-muted", row[1]),
-			statusPill(row[2]),
-			gtui.Toggle("", row[2] == "ready"),
+			gtui.Text("truncate", person[0]),
+			gtui.Text("text-muted truncate", person[1]),
+			gtui.Row("gap-1 items-center",
+				gtui.StatusDot("", person[2]),
+				gtui.Text("truncate", person[2]),
+			),
 		})
 	}
 
 	return gtui.Column("grow gap-1",
 		gtui.DataTable(gtui.TableOptions{
 			Class:   "key-a",
-			Title:   "data table",
+			Title:   "people",
 			Caption: "zebra rows, selectable rows, row actions and a pager",
 			Actions: []gtui.Component{
-				gtui.Button("text-accent focus:bold", "＋ new", func(e *gtui.Event) { say("table-out", "new row") }),
+				gtui.IconButton("pill border-accent text-accent", "plus", "new", func(e *gtui.Event) {
+					say("table-out", "new row")
+				}),
 			},
 			Cols: []gtui.Col{
-				{Label: "name", Width: "w-1/4"},
-				{Label: "role", Width: "w-12"},
-				{Label: "status", Width: "w-12"},
-				{Label: "active", Width: "grow", Right: true},
+				{Label: "name", Width: "grow"},
+				{Label: "role", Width: "w-9"},
+				{Label: "status", Width: "w-9"},
 			},
 			Rows:       rows,
-			Footer:     gtui.Cells("4 people", "", "", ""),
 			Zebra:      true,
 			Compact:    true,
 			Selectable: true,
@@ -46,42 +48,55 @@ func pageTables() gtui.Component {
 				{Label: "del", Class: "text-danger", Run: func(index int) { confirmDelete(people[index][0]) }},
 			},
 			Page: "page 1 of 1",
+			Prev: func(e *gtui.Event) { say("table-out", "previous page") },
+			Next: func(e *gtui.Event) { say("table-out", "next page") },
 		}),
-		gtui.Row("gap-1",
-			card("b", "result", out("table-out", "click a row, edit or del")),
-			card("d", "simple table",
-				note("Table is the plain version without the chrome"),
-				gtui.Table("rounded border-line",
+		out("table-out", "click a row, or edit and del on the right"),
+		gtui.Columns("", []string{"w-14", "w-14", "w-16"},
+			gtui.Metric("", "people", "4", "+1"),
+			gtui.Metric("", "failed", "1", "-2"),
+			gtui.Metric("", "last sync", "09:40", ""),
+		),
+		cards(
+			gtui.Window("key-b grow basis-0 clip", "plain table",
+				gtui.Table("",
 					[]gtui.Col{{Label: "key", Width: "w-10"}, {Label: "value", Width: "grow", Right: true}},
 					gtui.Cells("rows", "4"),
-					gtui.Cells("columns", "4"),
+					gtui.Cells("columns", "3"),
 				),
 			),
+			gtui.DataTable(gtui.TableOptions{
+				Class:   "key-d grow basis-0 clip",
+				Title:   "backups",
+				Cols:    []gtui.Col{{Label: "name", Width: "grow"}, {Label: "size", Width: "w-8", Right: true}},
+				Footer:  gtui.Cells("total", "0 B"),
+				Empty:   "no backups yet",
+				Compact: true,
+			}),
+		),
+		card("j", "a table built by hand",
+			note("Table, or TableHead and TableRow, when DataTable is too much"),
+			gtui.Table("", handCols,
+				gtui.Cells("fast", "2", "61%"),
+				gtui.Cells("archive", "10", "12%"),
+			),
+			gtui.Text("text-muted dim mt-1", "the same two rows, written row by row"),
+			gtui.TableHead("", handCols),
+			gtui.TableRow("", handCols, gtui.Cells("fast", "2", "61%")...),
+			gtui.TableRow("bg-raised", handCols, gtui.Cells("archive", "10", "12%")...),
 		),
 	)
 }
 
-func statusPill(status string) gtui.Component {
-	switch status {
-	case "ready":
-		return gtui.Pill("text-success", status)
-	case "pending":
-		return gtui.Pill("text-warning", status)
-	}
-	return gtui.Pill("text-danger", status)
+var handCols = []gtui.Col{
+	{Label: "pool", Width: "w-12"},
+	{Label: "disks", Width: "w-7", Right: true},
+	{Label: "used", Width: "w-7", Right: true},
 }
 
 func confirmDelete(name string) {
-	app.Modal("delete row",
-		gtui.Text("text-muted", name),
-		gtui.Row("gap-1",
-			gtui.Button("rounded border-danger text-danger focus:bold #yes", "delete", func(e *gtui.Event) {
-				app.CloseModal()
-				app.Toast("danger", "deleted "+name)
-			}),
-			gtui.Button("rounded border-line text-muted focus:bold #no", "cancel", func(e *gtui.Event) {
-				app.CloseModal()
-			}),
-		),
-	)
+	app.Confirm("delete "+name+"?", "the row goes away for good", func() {
+		app.Toast("danger", "deleted "+name)
+		say("table-out", "deleted %s", name)
+	})
 }

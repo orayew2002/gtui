@@ -1,6 +1,10 @@
 package main
 
-import "github.com/orayew2002/gtui"
+import (
+	"strings"
+
+	"github.com/orayew2002/gtui"
+)
 
 type page struct {
 	Key   string
@@ -25,18 +29,29 @@ func pages() []page {
 		{Key: "0", Title: "layout", About: "rows, columns, grids, splits and scrolling", Body: pageLayout},
 		{Key: "i", Title: "icons", About: "every icon the framework ships", Body: pageIcons},
 		{Key: "t", Title: "themes", About: "theme tokens and the light and dark palettes", Body: pageThemes},
+		{Key: "l", Title: "i18n", About: "languages, translation keys and switching at runtime", Body: pageI18n},
+		{Key: "s", Title: "style", About: "the utility classes every component takes", Body: pageStyle},
+		{Key: "e", Title: "extras", About: "navbars, panels, windows, timelines and tags", Body: pageExtras},
+		{Key: "v", Title: "views", About: "chat, logs, code, address and status bars", Body: pageViews},
 	}
 }
 
 var currentKey = "1"
 
 func current() page {
-	for _, item := range pages() {
-		if item.Key == currentKey {
-			return item
-		}
+	if item, ok := byKey(currentKey); ok {
+		return item
 	}
 	return pages()[0]
+}
+
+func byKey(key string) (page, bool) {
+	for _, item := range pages() {
+		if item.Key == key {
+			return item, true
+		}
+	}
+	return page{}, false
 }
 
 // goTo switches the page by title, which is what the palette and the snapshot
@@ -50,12 +65,25 @@ func goTo(title string) {
 	}
 }
 
+// show swaps the page, the header and the selected nav item together. Every
+// way of navigating ends here.
+func show(item page) {
+	currentKey = item.Key
+	app.Open("#main", item.Body())
+	app.Open("#head", header(item)...)
+	app.Select("#nav" + item.Key)
+}
+
+// onNavigate handles a click on a sidebar link, which is also what the one key
+// shortcuts and the palette trigger.
 func onNavigate(e *gtui.Event) {
-	for _, item := range pages() {
-		if e.Target.Get("id") == "nav"+item.Key {
-			currentKey = item.Key
-			app.Open("#head", header(item)...)
-		}
+	id := e.Target.Get("id")
+	if !strings.HasPrefix(id, "nav") {
+		return
+	}
+
+	if item, ok := byKey(strings.TrimPrefix(id, "nav")); ok {
+		show(item)
 	}
 }
 
@@ -63,19 +91,10 @@ func openPalette() {
 	actions := make([]gtui.Action, 0, len(pages()))
 
 	for _, item := range pages() {
-		title := item.Title
-		actions = append(actions, gtui.Action{Key: item.Key, Label: title, Run: func() {
-			goTo(title)
-			show(current())
+		actions = append(actions, gtui.Action{Key: item.Key, Label: item.Title, Run: func() {
+			show(item)
 		}})
 	}
 
 	app.Palette("go to", actions...)
-}
-
-// show swaps the page, the header and the selected nav item together.
-func show(item page) {
-	app.Open("#main", item.Body())
-	app.Open("#head", header(item)...)
-	app.Select("#nav" + item.Key)
 }

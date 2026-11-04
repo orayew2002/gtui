@@ -1,0 +1,37 @@
+{
+  "app": {
+    "name": "gtui gallery",
+    "tagline": "terminal user interfaces for Go"
+  },
+  "nav": {
+    "buttons": "buttons",
+    "inputs": "inputs",
+    "pickers": "pickers",
+    "tables": "tables",
+    "lists": "lists",
+    "feedback": "feedback",
+    "charts": "charts",
+    "media": "media",
+    "motion": "motion",
+    "layout": "layout",
+    "icons": "icons",
+    "themes": "themes",
+    "i18n": "languages",
+    "style": "style",
+    "extras": "extras"
+  },
+  "i18n": {
+    "title": "languages",
+    "pick": "pick a language",
+    "keys": "keys and translations",
+    "format": "T with arguments",
+    "fallback": "fallback",
+    "live": "switching rebuilds the view"
+  },
+  "msg": {
+    "greeting": "Hello %s, you have %d new messages",
+    "items": "%d items selected",
+    "saved": "saved",
+    "onlyEnglish": "only en.json has this key"
+  }
+}

@@ -1,6 +1,10 @@
 package gtui
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/orayew2002/gtui/src/render"
+)
 
 type TableOptions struct {
 	Class   string
@@ -44,7 +48,7 @@ func rowActions(index int, opts TableOptions) Component {
 			class = "text-muted"
 		}
 
-		buttons = append(buttons, Button(class+" focus:bold focus:underline", action.Label,
+		buttons = append(buttons, Button(class, action.Label,
 			func(e *Event) {
 				e.StopPropagation()
 				if run != nil {
@@ -54,15 +58,30 @@ func rowActions(index int, opts TableOptions) Component {
 		))
 	}
 
-	width := opts.RowWidth
-	if width == "" {
-		width = "w-14"
+	return Div(opts.RowWidth+" shrink-0 row gap-1 justify-end", buttons...)
+}
+
+func rowActionsWidth(opts TableOptions) string {
+	if opts.RowWidth != "" {
+		return opts.RowWidth
 	}
 
-	return Div(width+" shrink-0 row gap-1 justify-end", buttons...)
+	width := 0
+	for i, action := range opts.RowActions {
+		if i > 0 {
+			width++
+		}
+		width += render.StringWidth(action.Label) + 4
+	}
+
+	return "w-" + itoa(width)
 }
 
 func DataTable(opts TableOptions) Component {
+	if opts.OnSelect != nil {
+		opts.Selectable = true
+	}
+
 	pad := "px-2"
 	if opts.Compact {
 		pad = "px-1"
@@ -76,11 +95,8 @@ func DataTable(opts TableOptions) Component {
 
 	cols := opts.Cols
 	if len(opts.RowActions) > 0 {
-		width := opts.RowWidth
-		if width == "" {
-			width = "w-14"
-		}
-		cols = append(append([]Col{}, cols...), Col{Label: "", Width: width, Right: true})
+		opts.RowWidth = rowActionsWidth(opts)
+		cols = append(append([]Col{}, cols...), Col{Width: opts.RowWidth, Right: true})
 		opts.Cols = cols
 	}
 
@@ -92,7 +108,7 @@ func DataTable(opts TableOptions) Component {
 	default:
 		for i, row := range opts.Rows {
 			if len(opts.RowActions) > 0 {
-				row = append(append([]Component{}, row...), rowActions(i, opts))
+				row = append(padCells(row, len(cols)-1), rowActions(i, opts))
 			}
 			body = append(body, tableBodyRow(pad, i, row, opts))
 		}
@@ -109,14 +125,25 @@ func DataTable(opts TableOptions) Component {
 	return Div(join("col rounded border-line bg-panel", opts.Class), body...)
 }
 
+func padCells(row []Component, n int) []Component {
+	out := make([]Component, 0, n+1)
+	out = append(out, row...)
+
+	for len(out) < n {
+		out = append(out, Div(""))
+	}
+	return out
+}
+
 func tableToolbar(pad string, opts TableOptions) Component {
+	ink := inkOf(opts.Class)
 	left := []Component{}
 
 	if opts.Title != "" {
-		left = append(left, Text("text-ink bold nowrap", opts.Title))
+		left = append(left, Text("bold nowrap", opts.Title))
 	}
 	if opts.Caption != "" {
-		left = append(left, Text("text-muted dim nowrap", opts.Caption))
+		left = append(left, Text(join("text-muted dim nowrap", ink), opts.Caption))
 	}
 
 	head := []Component{Div("col grow", left...)}
@@ -133,29 +160,14 @@ func tableHeader(pad string, cols []Col) Component {
 		if col.Right {
 			class += " text-right"
 		}
-		cells = append(cells, Text(class, strings.ToUpper(col.Label)))
+		cells = append(cells, Text(join(class, col.Class), strings.ToUpper(col.Label)))
 	}
 
 	return Div("row gap-1 border-b border-line "+pad, cells...)
 }
 
 func tableBodyRow(pad string, index int, row []Component, opts TableOptions) Component {
-	cells := make([]Component, 0, len(opts.Cols))
-
-	for i, col := range opts.Cols {
-		if i >= len(row) {
-			break
-		}
-
-		class := col.Width + " shrink-0 nowrap"
-		if col.Right {
-			class += " text-right"
-		}
-
-		cell := row[i]
-		cell.class = join(class, cell.class)
-		cells = append(cells, cell)
-	}
+	cells := tableCells(opts.Cols, row, "")
 
 	class := "row gap-1 " + pad + " hover:bg-raised"
 
@@ -178,24 +190,30 @@ func tableBodyRow(pad string, index int, row []Component, opts TableOptions) Com
 }
 
 func tableFooter(pad string, opts TableOptions) Component {
-	cells := make([]Component, 0, len(opts.Cols))
+	cells := tableCells(opts.Cols, opts.Footer, "bold")
 
-	for i, col := range opts.Cols {
-		if i >= len(opts.Footer) {
-			break
+	return Div("row gap-1 border-t border-line "+pad, cells...)
+}
+
+func tableCells(cols []Col, row []Component, extra string) []Component {
+	cells := make([]Component, 0, len(cols))
+
+	for i, col := range cols {
+		cell := Div("")
+		if i < len(row) {
+			cell = row[i]
 		}
 
-		class := col.Width + " shrink-0 nowrap bold"
+		class := join(col.Width+" shrink-0 nowrap", extra)
 		if col.Right {
 			class += " text-right"
 		}
 
-		cell := opts.Footer[i]
-		cell.class = join(class, cell.class)
+		cell.class = join(join(class, col.Class), cell.class)
 		cells = append(cells, cell)
 	}
 
-	return Div("row gap-1 border-t border-line "+pad, cells...)
+	return cells
 }
 
 func tableEmpty(pad string, opts TableOptions) Component {

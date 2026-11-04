@@ -27,6 +27,8 @@ func Apply(s *Style, class string) bool {
 	return applyValued(s, rest)
 }
 
+// Classes apply left to right, so a later class overrides an earlier one and a
+// caller's class always wins over a component's defaults.
 func ApplyAll(s *Style, classes []string) []string {
 	var unknown []string
 	for _, c := range classes {
@@ -83,8 +85,16 @@ func applyKeyword(s *Style, rest string) bool {
 		s.Border, s.BorderSides = BorderSoft, allSides()
 	case "tight":
 		s.Border, s.BorderSides = BorderTight, allSides()
-	case "borderless", "border-none":
+	case "pill", "rounded-pill":
+		// A pill only brackets its content, so it claims no vertical chrome
+		// and a one-line pill stays one row tall.
+		s.Border, s.BorderSides = BorderPill, Edges{Left: 1, Right: 1}
+	case "borderless", "border-none", "rounded-none":
 		s.Border, s.BorderSides = BorderNone, Edges{}
+	case "shadow":
+		s.Shadow = true
+	case "shadow-none":
+		s.Shadow = false
 
 	case "border-t":
 		s.BorderSides = Edges{Top: 1}
@@ -185,6 +195,16 @@ func applyKeyword(s *Style, rest string) bool {
 		s.NoWrap = false
 	case "pre":
 		s.Pre, s.NoWrap = true, true
+	case "truncate", "text-truncate":
+		s.NoWrap, s.Overflow = true, OverflowHidden
+	case "uppercase", "text-uppercase":
+		s.Transform = TransformUpper
+	case "lowercase", "text-lowercase":
+		s.Transform = TransformLower
+	case "capitalize", "text-capitalize":
+		s.Transform = TransformTitle
+	case "normal-case":
+		s.Transform = TransformNone
 	case "bold":
 		s.Attr |= AttrBold
 	case "dim":
@@ -199,6 +219,10 @@ func applyKeyword(s *Style, rest string) bool {
 		s.Attr |= AttrStrike
 	case "blink":
 		s.Attr |= AttrBlink
+	case "opacity-50":
+		s.Attr |= AttrDim
+	case "opacity-100":
+		s.Attr &^= AttrDim
 	case "normal":
 		s.Attr = 0
 
@@ -257,7 +281,23 @@ func applyValued(s *Style, rest string) bool {
 		if !ok {
 			return false
 		}
-		s.Gap = n
+		s.Gap, s.HasGapX, s.HasGapY = n, false, false
+		return true
+
+	case "gap-x":
+		n, ok := atoi(value)
+		if !ok {
+			return false
+		}
+		s.GapX, s.HasGapX = n, true
+		return true
+
+	case "gap-y":
+		n, ok := atoi(value)
+		if !ok {
+			return false
+		}
+		s.GapY, s.HasGapY = n, true
 		return true
 
 	case "w":
@@ -315,6 +355,10 @@ func applyValued(s *Style, rest string) bool {
 		return true
 
 	case "bg":
+		if value == "transparent" || value == "none" {
+			s.Background = Paint{}
+			return true
+		}
 		c, ok := colors.Parse(value)
 		if !ok {
 			return false
@@ -348,7 +392,8 @@ func applyArbitrary(s *Style, key, value string) bool {
 	case "bg", "text", "border":
 		return applyValued(s, key+"-"+value)
 	case "w", "h", "min-w", "min-h", "max-w", "max-h", "p", "px", "py", "pt",
-		"pr", "pb", "pl", "m", "mx", "my", "mt", "mr", "mb", "ml", "gap",
+		"pr", "pb", "pl", "m", "mx", "my", "mt", "mr", "mb", "ml",
+		"gap", "gap-x", "gap-y",
 		"top", "right", "bottom", "left", "z", "grow", "shrink", "basis":
 		return applyValued(s, key+"-"+value)
 	}
