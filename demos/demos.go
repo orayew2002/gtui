@@ -30,7 +30,7 @@ func All() []Project {
 		{"8", "shop", "three languages and pictures off disk", Shop},
 		{"9", "form", "one panel of inputs with a save", Form},
 		{"0", "browser", "tabs and links that swap one box", Browser},
-		{"e", "editor", "a file tree and code with a gutter", Editor},
+		{"e", "editor", "type code, with gopls for problems", Editor},
 		{"r", "player", "a music player with a queue", Player},
 		{"t", "chat", "an assistant thread with a prompt box", Chat},
 	}

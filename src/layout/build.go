@@ -24,10 +24,15 @@ func buildChildren(b *Box, node *dom.Node, parentStyle style.Style, diags *[]sty
 	var pending []Run
 
 	flush := func() {
-
-		for len(pending) > 0 && isSpaceOnly(pending[len(pending)-1].Text) {
-			pending = pending[:len(pending)-1]
+		// trailing spaces do not widen an ordinary box, so they go. In pre they
+		// are content, the indentation of a line of code, and a run that is
+		// nothing but spaces is a run that has to keep its width.
+		if !parentStyle.Pre {
+			for len(pending) > 0 && isSpaceOnly(pending[len(pending)-1].Text) {
+				pending = pending[:len(pending)-1]
+			}
 		}
+
 		if len(pending) == 0 {
 			return
 		}

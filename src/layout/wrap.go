@@ -64,7 +64,11 @@ func (b *Box) wrapText(width int, nowrap bool) {
 			case tok.br:
 				breakLine()
 
-			case tok.space:
+			// in ordinary text a space is a chance to break a line and the ones
+			// at the start of a line collapse away. In pre it is content: the
+			// indentation of a line of code, which has to be kept and placed
+			// like any other token.
+			case tok.space && !st.Pre:
 				if lineW == 0 {
 					return
 				}

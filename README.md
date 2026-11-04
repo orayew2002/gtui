@@ -238,6 +238,51 @@ app := gtui.Init().Transparent(true)   // gtui paints no background of its own
 terminal through say `bg-transparent`. It survives a theme switch, and `Transparent(false)` puts
 the theme's canvas back.
 
+## Editing code
+
+`CodeView` draws code. `CodeEdit` lets you type it. The buffer belongs to the app, so undo, saving
+and sending the text to a language server are all your own code:
+
+```go
+gtui.CodeEdit(gtui.EditorOptions{
+	Class: "grow clip #ed",
+	Lines: lines,        // the buffer
+	Line:  line,         // the caret, counting from one
+	Col:   col,
+	Marks: marks,        // a glyph in the gutter, by line
+	OnChange: func(lines []string, line, col int) { … },
+	OnMove:   func(line, col int) { … },
+	OnKey:    func(e *gtui.Event) bool { … },   // your own bindings first
+})
+```
+
+It handles the keys an editor has to: the arrows across line ends, home and end, page up and down,
+enter splitting a line, backspace joining two, delete pulling the next line up, tab as spaces, and
+a multi-line paste landing at the caret. The caret is drawn by reversing the cell it sits on, so
+the columns keep lining up. Give it spaces rather than tabs: a tab's width depends on where the run
+holding it starts, and the caret splits a line into runs.
+
+## Language servers
+
+`lsp` is a client for any server that speaks the protocol over stdin and stdout — gopls,
+rust-analyzer, pylsp, clangd:
+
+```go
+client, err := lsp.Start(projectDir, "gopls")
+client.OnDiagnostics(func(path string, items []lsp.Diagnostic) {
+	app.Do(func() { … })          // the server answers on its own goroutine
+})
+
+client.Open(path, "go", text)
+client.Change(path, text)         // after every keystroke is fine
+items, _ := client.Complete(path, line, col, text)
+text, _ := client.Hover(path, line, col, text)
+```
+
+Lines and columns are the editor's own, counting from one; the client converts them to the
+protocol's zero-based UTF-16 positions. `go run ./examples/editor` is the whole thing wired up:
+type into it, press the connect button, and gopls reports real problems into the gutter.
+
 ## Pictures
 
 Images decode to half-block cells — two pixels per character — so a 40×12 box shows 40×24 pixels
@@ -354,7 +399,7 @@ go run ./examples/dashboard    # stat cards, charts, a compact table
 go run ./examples/form         # inputs, selector, range, switch, toasts
 go run ./examples/browser      # tabs and links that swap one box
 go run ./examples/player       # media player with seek, volume, queue
-go run ./examples/editor       # file tree, code view with gutter, status bar
+go run ./examples/editor       # a real editor: type code, attach gopls, see problems
 go run ./examples/chat         # assistant thread with a prompt box
 ```
 
