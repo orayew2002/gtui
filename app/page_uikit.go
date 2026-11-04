@@ -4,7 +4,7 @@ import "github.com/orayew2002/gtui"
 
 func pageUIKit() gtui.Component {
 	return gtui.Column("grow gap-1",
-		gtui.Row("gap-1 flex-wrap key-a key-hide",
+		gtui.Row("gap-1 flex-wrap key-a",
 			gtui.Button("rounded border-accent text-accent focus:bold", "primary", nil),
 			gtui.Button("rounded border-line text-muted focus:bold", "secondary", nil),
 			gtui.Button("rounded border-danger text-danger focus:bold", "danger", confirmDelete),

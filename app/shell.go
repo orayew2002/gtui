@@ -6,42 +6,48 @@ import (
 )
 
 func shell() gtui.Component {
-	return gtui.Row("full bg-canvas p-1 gap-1",
+	return gtui.Row(
+		"full bg-canvas p-1 gap-1",
 		sidebar(),
-		gtui.Column("grow gap-1",
-			gtui.Div("row rounded border-line bg-panel px-2 gap-2 #head", header(active)...),
-			gtui.Div("grow scroll key-c key-hide #main", active.Page()),
+		gtui.Column(
+			"grow gap-1",
+			gtui.Div("row rounded border-line bg-panel px-2 gap-2 #head", header(active())...),
+			gtui.Div("grow scroll rounded border-line key-c #main", active().Page()),
 		),
 	)
 }
 
 func sidebar() gtui.Component {
 	items := []gtui.Component{
-		gtui.Row("gap-1 px-1",
+		gtui.Row(
+			"gap-1 px-1",
 			gtui.Text("text-ink bold nowrap", "▣ "+gtui.T("app")),
 			gtui.Text("grow text-right text-muted nowrap", gtui.T("admin")),
 		),
-		gtui.Row("rounded border-line px-1",
+		gtui.Row(
+			"rounded border-line px-1",
 			gtui.Text("text-muted nowrap", "⌕ "+gtui.T("search")),
 		),
 	}
 
-	for _, item := range routes {
+	for _, item := range routes() {
 		if item.Section != "" {
 			items = append(items, gtui.Text("text-muted dim nowrap", gtui.T(item.Section)))
 		}
 		items = append(items, navLink(item))
 	}
 
-	items = append(items,
+	items = append(
+		items,
 		gtui.Spacer(),
-		gtui.Row("border-t border-line gap-1",
+		gtui.Row(
+			"border-t border-line gap-1",
 			gtui.Text("text-ink nowrap", "◍ "+gtui.T("admin")),
 			gtui.Text("grow text-right text-muted nowrap", "ctrl+p"),
 		),
 	)
 
-	return gtui.Column("w-20 shrink-0 rounded border-line bg-panel px-1 key-n key-hide #nav", items...)
+	return gtui.Column("w-20 shrink-0 rounded border-line bg-panel px-1 key-n #nav", items...)
 }
 
 func navLink(item route) gtui.Component {
@@ -57,12 +63,14 @@ func navLink(item route) gtui.Component {
 
 func header(item route) []gtui.Component {
 	body := []gtui.Component{
-		gtui.Column("grow",
+		gtui.Column(
+			"grow",
 			gtui.Text("text-ink bold nowrap", gtui.T(item.Label)),
 			gtui.Text("text-muted nowrap", description(item.Label)),
 		),
 		languageSwitch(),
-		gtui.Button("shrink-0 text-muted focus:text-ink focus:bold #mode", "◐ "+gtui.T("theme"),
+		gtui.Button(
+			"shrink-0 text-muted focus:text-ink focus:bold #mode", "◐ "+gtui.T("theme"),
 			func(e *gtui.Event) { app.ToggleTheme() },
 		),
 	}
@@ -73,7 +81,8 @@ func header(item route) []gtui.Component {
 			label = gtui.T("action.create", gtui.T(item.Label))
 		}
 
-		body = append(body, gtui.Button("shrink-0 bg-ink text-canvas bold px-2 focus:underline #action", label,
+		body = append(body, gtui.Button(
+			"shrink-0 bg-ink text-canvas bold px-2 focus:underline #action", label,
 			func(e *gtui.Event) { app.Toast("", label) },
 		))
 	}

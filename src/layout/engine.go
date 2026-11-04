@@ -120,11 +120,23 @@ func finish(b *Box, contentW, availW, availH int) {
 		childAvailH = -1
 	}
 
+	childW := contentW
+	if st.ScrollX {
+		if natural := naturalWidth(b); natural > childW {
+			childW = natural
+		}
+	}
+
 	switch st.Display {
 	case style.DisplayFlex:
-		measureFlex(b, contentW, childAvailH, definiteH)
+		measureFlex(b, childW, childAvailH, definiteH)
 	default:
-		measureBlock(b, contentW, childAvailH)
+		measureBlock(b, childW, childAvailH)
+	}
+
+	b.ScrollMaxX = childW - contentW
+	if b.ScrollMaxX < 0 {
+		b.ScrollMaxX = 0
 	}
 
 	if !definiteH {
@@ -610,6 +622,37 @@ func intrinsicWidth(b *Box, limit int) int {
 
 	b.intrinsic, b.hasIntrinsic = w, true
 	return capTo(w, limit)
+}
+
+func naturalWidth(b *Box) int {
+	if b.Node != nil && b.Node.Canvas != nil {
+		return b.Node.Canvas.W
+	}
+	if b.Node == nil {
+		return maxLineWidth(b.Source)
+	}
+
+	flow := flowChildren(b)
+	row := b.Style.Display == style.DisplayFlex && b.Style.Direction == style.Row
+
+	widest := 0
+	for i, c := range flow {
+		own := intrinsicWidth(c, -1) + c.Style.Margin.Horizontal() + childInsets(c)
+
+		if row {
+			if i > 0 {
+				widest += b.Style.Gap
+			}
+			widest += own
+			continue
+		}
+
+		if own > widest {
+			widest = own
+		}
+	}
+
+	return widest
 }
 
 func childInsets(c *Box) int {

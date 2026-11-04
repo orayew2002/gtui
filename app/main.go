@@ -20,7 +20,7 @@ func main() {
 	app.On("click", onNavigate)
 	app.Bind("ctrl+p", openPalette)
 
-	app.Select("#nav" + active.Key)
+	app.Select("#nav" + active().Key)
 	startTicker()
 
 	if snapshot() {
@@ -62,7 +62,7 @@ func snapshot() bool {
 	}
 
 	app.Refresh()
-	app.Select("#nav" + active.Key)
+	app.Select("#nav" + active().Key)
 
 	fmt.Println(app.Snapshot(width, height))
 	return true

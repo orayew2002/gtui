@@ -44,20 +44,24 @@ that writes only the cells that actually changed.
 - **Complete.** Tables, charts, forms, modals, images, animation, themes, translations.
 
 ```
- ╭──────────────────╮ ╭─────────────────────────────────────────────────────────────╮
- │  ▣ media  admin  │ │  movies                      en ru tk   ◐ theme   + create  │
- │ ╭──────────────╮ │ │  films, tracks and encoding status                          │
- │ │ ⌕ search     │ │ ╰─────────────────────────────────────────────────────────────╯
+ ╭───────────────┤n├╮ ╭──────────────────────────────────────────────────────────────╮
+ │  ▣ panel  admin  │ │  movies                       en ru tk   ◐ theme   + create  │
+ │ ╭──────────────╮ │ │  rows, status and encoding state                             │
+ │ │ ⌕ search     │ │ ╰──────────────────────────────────────────────────────────────╯
  │ ╰──────────────╯ │
- │ MAIN             │ ╭─────────────────────────────────────────────────────────────╮
- │  1 home          │ │ NAME               STORAGE   DURATION   SIZE   STATUS       │
- │  y dynamic       │ │─────────────────────────────────────────────────────────────│
- │ CONTENT          │ │ Garagum gijeleri   disk-01   1:52:10    2.1 GB • ready      │
- │  2 movies        │ │ Köneürgenç         disk-01   1:34:02    1.7 GB • ready      │
- │  3 serials       │ │ Ýaz ýagşy          disk-02   2:04:55    2.8 GB • encoding   │
- │  4 books         │ ╰─────────────────────────────────────────────────────────────╯
- ╰──────────────────╯   1 284 items · page 1 of 92                   ‹ prev  next ›
+ │ MAIN             │ ╭───────────────────────────────────────────────────────────┤c├╮
+ │  1 home          │ │╭──────────────────────────────────────────────────────────┤f├╮│
+ │  y dynamic       │ ││ NAME             STORAGE   DURATION   SIZE     STATUS      ││
+ │ CONTENT          │ ││──────────────────────────────────────────────────────────  ││
+ │  2 movies        │ ││ first row        disk-01   1:52:10    2.1 GB   • ready     ││
+ │  3 serials       │ ││ second row       disk-01   1:34:02    1.7 GB   • ready     ││
+ │  4 books         │ ││ third row        disk-02   2:04:55    2.8 GB   • encoding  ││
+ │  i widgets       │ │╰──────────────────────────────────────────────────────────  ││
+ ╰──────────────────╯ ╰──────────────────────────────────────────────────────────────╯
 ```
+
+Every box can own a jump key. `key-c` draws a `┤c├` tab in its top border, and pressing `c` moves
+focus straight into it — a dense screen stays one keystroke deep.
 
 ## Three things to learn
 
@@ -91,7 +95,7 @@ app.Refresh()                     // the whole view
 | --- | --- |
 | structure | `Div` `Row` `Column` `Center` `Spacer` `Text` `Card` `Grid` `Split` `List` `ListItem` `Divider` `Toolbar` |
 | navigation | `Href` `Tabs` `Breadcrumb` `Pagination` `Dropdown` `MenuItem` `Tree` `Accordion` `Stepper` `app.Palette` |
-| data | `DataTable` `Table` `Col` `Cells` `Badge` `Pill` `Toggle` `Avatar` `KeyValue` `StatCard` `Chips` `Rating` `ScrollList` |
+| data | `DataTable` (toolbar, zebra, selectable rows, `RowActions`, footer, pager) `Table` `Col` `Cells` `Badge` `Pill` `Toggle` `Avatar` `KeyValue` `StatCard` `Chips` `Rating` `ScrollList` |
 | forms | `Input` `Password` `Number` `Email` `URL` `Phone` `Date` `Search` `TextArea` `Checkbox` `Radios` `Select` `Selector` `Range` `Switch` `Calendar` `Button` |
 | feedback | `Alert` `Spinner` `Progress` `Gauge` `Skeleton` `Hint` `StatusBar` `app.Modal` `app.Toast` |
 | charts | `BarChart` `Sparkline` `LineChart` `Donut` `Gauge` |
@@ -107,7 +111,7 @@ app.Refresh()                     // the whole view
 - border `border` `rounded` `thick` `double` `dashed` `soft` `tight` `border-t|r|b|l|x|y` `border-accent`
 - color `bg-panel` `text-ink` `border-line` `text-danger` `bg-[#1c1c1c]`
 - text `bold` `dim` `italic` `underline` `strike` `nowrap` `pre`
-- overflow `clip` `scroll` `visible` `focusable`
+- overflow `clip` `scroll` `scroll-x` `visible` `focusable`
 - state `hover:` `focus:` `active:` `current:`
 
 ## Keyboard
@@ -115,10 +119,12 @@ app.Refresh()                     // the whole view
 | key | action |
 | --- | --- |
 | `tab` `shift+tab` | move focus anywhere |
-| arrows | move inside the current box; scroll a `scroll` box |
+| arrows | move inside the current box; scroll a `scroll` or `scroll-x` box |
 | `enter` `space` | activate a link, button, switch, row |
-| `key-x` class | press `x` to jump into that box (`[x]` badge, `key-hide` hides it) |
-| `pgup` `pgdn` `home` `end`, wheel | scroll |
+| `key-x` class | press `x` to jump into that box (`┤x├` badge in its border, `key-hide` hides it) |
+| `pgup` `pgdn` `home` `end`, wheel | scroll vertically or sideways |
+| `← →` `home` `end` in a field | move the caret; `delete` and `backspace` edit in place |
+| paste | arrives as one `paste` event and lands at the caret |
 | `esc` | close a modal |
 | `app.Bind("ctrl+p", fn)` | your own shortcut |
 
@@ -179,21 +185,33 @@ go run ./examples/browser      # tab bar, address bar, page, status bar
 go run ./examples/player       # media player with seek, volume, queue
 go run ./examples/editor       # file tree, code view with gutter, status bar
 go run ./examples/chat         # assistant thread with a prompt box
-go run ./app                   # the full media admin panel
+go run ./app                   # the full admin panel
 ```
 
-`app/` is a complete admin and the reference for structuring a real app:
+`app/` is a complete **admin panel** and the reference for structuring a real app:
 
 ```
 app/main.go          wiring: languages, theme, routes, run
 app/routes.go        the route table and the command palette
 app/shell.go         sidebar, header, language and theme switches
 app/page_*.go        one file per page
-app/data.go          demo data
+app/data.go          sample rows
 app/helpers.go       small local helpers
 ```
 
-Adding a page is one file plus one line in `routes.go`.
+Adding a page is one file plus one line in `routes.go`. The panel covers the whole component set
+so you can try each one by hand:
+
+| page | components on it |
+| --- | --- |
+| home | `StatCard` `Card` `KeyValue` `Gauge` `Sparkline` `Divider` |
+| dynamic | `Progress` `Spinner` `Sparkline` `LineChart` `Wave` `Marquee` `Typewriter` `Pulse` `Dots` `Blink` `Range` `Switch` `Button` `app.Toast` |
+| movies · serials · books · songs · storages | `DataTable` `Pill` `Toggle` `Pagination` with translated columns |
+| editor | `Input` `Number` `Selector` `Range` `TextArea` `Radios` `Switch` `Chips` `Alert` `Button` `app.Modal` |
+| uikit | `Button` `Dropdown` `Badge` `Pill` `Avatar` `Rating` `Chips` `Spinner` `Donut` `Hint` `Alert` `BarChart` `LineChart` `Stepper` `Tree` `Player` `Skeleton` |
+| widgets | `Input` `Number` `Password` `Email` `Search` `Selector` `Range` `Switch` `Checkbox` `Radios` `Calendar` `CodeView` `Chat` `Tabs` `ScrollList` `Accordion` `Breadcrumb` `Pagination` |
+| logs | `Logs` with level colors |
+| settings | `KeyValue` `Switch` language and theme pickers |
 
 ```sh
 go run ./app snapshot 110 30                      # print a frame as text
@@ -216,6 +234,8 @@ app.Modal(title, body...) / app.CloseModal() / app.Toast(kind, msg) / app.Palett
 app.Focus(node) / app.Select(sel) / app.Bind(key, fn) / app.QuitOn(keys...)
 app.Theme(t) / app.ToggleTheme() / app.Tokens(edit) / app.Language(code)
 app.Animate(fps, fn) / app.Every(d, fn) / app.After(d, fn) / app.Do(fn)
+app.Size() / app.OnResize(fn) / app.Copy(text)
+app.UseMouse(on) / app.UseCursor(on)   // mouse capture and the real caret
 app.Render()                    // open the terminal and run
 app.Snapshot(w, h)              // render to plain text
 ```

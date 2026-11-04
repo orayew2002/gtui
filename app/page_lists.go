@@ -26,7 +26,12 @@ func pageMovies() gtui.Component {
 		col("tracks", "grow", true),
 	}
 
-	return listPage("f", cols, data, gtui.T("pager", 1284, 1, 92))
+	titles := make([]string, 0, len(movieRows))
+	for _, item := range movieRows {
+		titles = append(titles, item.Title)
+	}
+
+	return listPage("f", cols, data, gtui.T("pager", 1284, 1, 92), titles)
 }
 
 func pageSerials() gtui.Component {
@@ -39,7 +44,7 @@ func pageSerials() gtui.Component {
 		col("active", "grow", true),
 	}
 
-	return listPage("f", cols, rows(serialRows), gtui.T("pager", 96, 1, 7))
+	return listPage("f", cols, rows(serialRows), gtui.T("pager", 96, 1, 7), names(serialRows))
 }
 
 func pageBooks() gtui.Component {
@@ -52,7 +57,7 @@ func pageBooks() gtui.Component {
 		col("active", "grow", true),
 	}
 
-	return listPage("f", cols, rows(bookRows), gtui.T("pager", 317, 1, 22))
+	return listPage("f", cols, rows(bookRows), gtui.T("pager", 317, 1, 22), names(bookRows))
 }
 
 func pageSongs() gtui.Component {
@@ -65,7 +70,7 @@ func pageSongs() gtui.Component {
 		col("active", "grow", true),
 	}
 
-	return listPage("f", cols, rows(songRows), gtui.T("pager", 8942, 1, 596))
+	return listPage("f", cols, rows(songRows), gtui.T("pager", 8942, 1, 596), names(songRows))
 }
 
 func pageStorages() gtui.Component {
@@ -77,7 +82,7 @@ func pageStorages() gtui.Component {
 		col("status", "grow", false),
 	}
 
-	return listPage("f", cols, rows(storageRows), gtui.T("pager", 4, 1, 1))
+	return listPage("f", cols, rows(storageRows), gtui.T("pager", 4, 1, 1), names(storageRows))
 }
 
 func pageLogs() gtui.Component {
@@ -91,7 +96,7 @@ func pageLogs() gtui.Component {
 		}
 	}
 
-	return gtui.Column("grow rounded border-line bg-panel px-1 key-hide key-f",
+	return gtui.Column("grow rounded border-line bg-panel px-1 key-f",
 		gtui.Logs("", lines, stamps),
 	)
 }

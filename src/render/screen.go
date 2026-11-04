@@ -77,3 +77,14 @@ func (s *Screen) Flush() error {
 	s.full = false
 	return s.pen.flush()
 }
+
+func (s *Screen) Write(p []byte) (int, error) { return s.pen.write(p) }
+
+func (s *Screen) ShowCursorAt(x, y int) {
+	s.pen.moveTo(x, y)
+	s.pen.writeString("\x1b[?25h")
+}
+
+func (s *Screen) HideCursor() {
+	s.pen.writeString("\x1b[?25l")
+}

@@ -111,6 +111,11 @@ func applyKeyword(s *Style, rest string) bool {
 		s.Overflow = OverflowVisible
 	case "scroll":
 		s.Overflow, s.Scroll, s.Focusable = OverflowScroll, true, true
+	case "scroll-x":
+		s.ScrollX, s.Focusable = true, true
+		if s.Overflow == OverflowVisible {
+			s.Overflow = OverflowHidden
+		}
 
 	case "justify-start":
 		s.Justify = JustifyStart

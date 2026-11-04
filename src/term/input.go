@@ -1,6 +1,7 @@
 package term
 
 import (
+	"bytes"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -25,6 +26,8 @@ const (
 	MouseMove
 	MouseWheelUp
 	MouseWheelDown
+	MouseWheelLeft
+	MouseWheelRight
 )
 
 type Mouse struct {
@@ -34,6 +37,12 @@ type Mouse struct {
 }
 
 func (Mouse) event() {}
+
+type Paste struct {
+	Text string
+}
+
+func (Paste) event() {}
 
 func decode(buf []byte) (Event, int) {
 	if len(buf) == 0 {
@@ -110,6 +119,10 @@ func decodeCSI(buf []byte) (Event, int) {
 	params := string(buf[2:end])
 	final := buf[end]
 	used := end + 1
+
+	if final == '~' && params == "200" {
+		return decodePaste(buf[used:], used)
+	}
 
 	if final == 'M' || final == 'm' {
 		if strings.HasPrefix(params, "<") {
@@ -216,6 +229,15 @@ func tildeKey(params string) Event {
 		return nil
 	}
 	return modified(name, params)
+}
+
+func decodePaste(rest []byte, used int) (Event, int) {
+	end := bytes.Index(rest, []byte("\x1b[201~"))
+	if end < 0 {
+		return nil, 0
+	}
+
+	return Paste{Text: string(rest[:end])}, used + end + len("\x1b[201~")
 }
 
 func decodeSGRMouse(params string, release bool) Event {

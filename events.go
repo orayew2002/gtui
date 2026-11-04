@@ -13,6 +13,8 @@ func (a *App) handle(ev term.Event) {
 		a.handleKey(e)
 	case term.Mouse:
 		a.handleMouse(e)
+	case term.Paste:
+		a.handlePaste(e)
 	}
 }
 
@@ -75,6 +77,10 @@ func (a *App) handleKey(k term.Key) {
 	}
 
 	if k.Rune == ' ' && a.activateFocus() {
+		return
+	}
+
+	if a.scrollSideways(k.Name) {
 		return
 	}
 
@@ -152,6 +158,33 @@ func firstFocusableIn(section *layout.Box) *dom.Node {
 	return found
 }
 
+func (a *App) handlePaste(p term.Paste) {
+	target := a.focus
+	if target == nil {
+		target = a.root
+	}
+
+	event := &dom.Event{Type: "paste", Target: target, Value: p.Text}
+	target.Dispatch(event)
+
+	if event.Stopped() || a.focus == nil || !a.focus.Has("type") {
+		a.Redraw()
+		return
+	}
+
+	for _, r := range p.Text {
+		if r == '\n' || r == '\r' {
+			if a.focus.Get("type") != InputArea {
+				continue
+			}
+		}
+		editField(a.focus, &dom.Event{Rune: r}, a.focus.Get("type"))
+	}
+
+	paintField(a.focus)
+	a.Redraw()
+}
+
 func (a *App) activateFocus() bool {
 	if a.focus == nil {
 		return false
@@ -201,6 +234,47 @@ func (a *App) moveFocus(key string) bool {
 
 	a.focusWithin(targets, delta)
 	return true
+}
+
+func (a *App) scrollSideways(key string) bool {
+	box := a.scrollableXAncestor(a.findBox(a.focus))
+	if box == nil || box.ScrollMaxX == 0 {
+		return false
+	}
+
+	node := box.Node
+
+	switch key {
+	case "left":
+		node.ScrollX -= 4
+	case "right":
+		node.ScrollX += 4
+	case "home":
+		node.ScrollX = 0
+	case "end":
+		node.ScrollX = box.ScrollMaxX
+	default:
+		return false
+	}
+
+	if node.ScrollX < 0 {
+		node.ScrollX = 0
+	}
+	if node.ScrollX > box.ScrollMaxX {
+		node.ScrollX = box.ScrollMaxX
+	}
+
+	a.Redraw()
+	return true
+}
+
+func (a *App) scrollableXAncestor(b *layout.Box) *layout.Box {
+	for ; b != nil; b = b.Parent {
+		if b.Node != nil && b.Style.ScrollX && b.ScrollMaxX > 0 {
+			return b
+		}
+	}
+	return nil
 }
 
 func (a *App) scrollFocused(key string) bool {
@@ -280,6 +354,24 @@ func (a *App) handleMouse(m term.Mouse) {
 			box.Node.ScrollY += scrollStep
 		}
 		a.clampScroll(box)
+		a.Redraw()
+
+	case term.MouseWheelLeft, term.MouseWheelRight:
+		box := a.scrollableXAncestor(hit)
+		if box == nil {
+			return
+		}
+		if m.Kind == term.MouseWheelLeft {
+			box.Node.ScrollX -= scrollStep
+		} else {
+			box.Node.ScrollX += scrollStep
+		}
+		if box.Node.ScrollX < 0 {
+			box.Node.ScrollX = 0
+		}
+		if box.Node.ScrollX > box.ScrollMaxX {
+			box.Node.ScrollX = box.ScrollMaxX
+		}
 		a.Redraw()
 	}
 }

@@ -38,7 +38,8 @@ type Box struct {
 	Lines  []Line
 	Source []Run
 
-	ScrollMax int
+	ScrollMax  int
+	ScrollMaxX int
 
 	intrinsic    int
 	hasIntrinsic bool

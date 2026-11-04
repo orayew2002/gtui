@@ -1,5 +1,5 @@
 {
-  "app": "media",
+  "app": "panel",
   "admin": "admin",
   "search": "gözle",
   "sections": {
@@ -35,7 +35,8 @@
     "dynamic": "janly maglumat, animasiýa we gözegçilik",
     "books": "sesli kitaplar we okaýanlar",
     "songs": "aýdymlar, albomlar we aýdymçylar",
-    "storages": "media saklaýan diskler"
+    "storages": "media saklaýan diskler",
+    "widgets": "meýdanlar, saýlawlar, sanawlar"
   },
   "col": {
     "name": "ady",
@@ -64,7 +65,8 @@
     "save": "ýazdyr",
     "reset": "arassala",
     "delete": "poz",
-    "cancel": "goý bolsun"
+    "cancel": "goý bolsun",
+    "edit": "üýtget"
   },
   "pager": "%d sany · sahypa %d / %d",
   "theme": "tema",
@@ -102,5 +104,6 @@
     "typed": "dinamiki interfeýsler, bir gezek ýazylýar",
     "live": "janly täzelenme",
     "done": "iş tamamlandy"
-  }
+  },
+  "widgets": "widgetler"
 }

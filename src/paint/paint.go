@@ -129,23 +129,32 @@ func Hint(buf *render.Buffer, frame, clip render.Rect, st style.Style) {
 		return
 	}
 
-	label := "[" + st.Shortcut + "]"
+	label := "┤" + st.Shortcut + "├"
+	if !st.HasBorder() {
+		label = st.Shortcut
+	}
+
 	width := render.StringWidth(label)
 	if frame.W < width {
 		return
 	}
 
 	inset := st.BorderWidths()
+
 	x := frame.Right() - width - inset.Right
 	y := frame.Y + inset.Top
-	if !st.HasBorder() {
+
+	if st.HasBorder() && inset.Top > 0 {
+		// Sit in the top border, like a legend, so the badge never covers
+		// content or a scrollbar.
+		x = frame.Right() - width - 1
+		y = frame.Y
+	} else if !st.HasBorder() {
 		x = frame.Right() - width
 	}
 
-	cell := render.Cell{}
-	if ink := st.BorderColor.Or(st.Foreground); ink.Set {
-		cell.Fg, cell.HasFg = ink.Color, true
-	}
+	cell := render.Cell{Attr: style.AttrBold}
+	cell.Fg, cell.HasFg = colors.Active().Accent, true
 	if st.Background.Set {
 		cell.Bg, cell.HasBg = st.Background.Color, true
 	}

@@ -1,5 +1,5 @@
 {
-  "app": "media",
+  "app": "panel",
   "admin": "admin",
   "search": "search",
   "sections": {
@@ -35,7 +35,8 @@
     "dynamic": "live data, animation and controls",
     "books": "audio books and readers",
     "songs": "tracks, albums and singers",
-    "storages": "disks that hold the media"
+    "storages": "disks that hold the media",
+    "widgets": "inputs, pickers, lists and views"
   },
   "col": {
     "name": "name",
@@ -64,7 +65,8 @@
     "save": "save",
     "reset": "reset",
     "delete": "delete",
-    "cancel": "cancel"
+    "cancel": "cancel",
+    "edit": "edit"
   },
   "pager": "%d items · page %d of %d",
   "theme": "theme",
@@ -102,5 +104,6 @@
     "typed": "dynamic interfaces, declared once",
     "live": "live updates",
     "done": "job finished"
-  }
+  },
+  "widgets": "widgets"
 }

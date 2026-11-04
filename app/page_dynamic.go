@@ -40,7 +40,7 @@ func startTicker() {
 			traffic[len(traffic)-1] = 10 + rand.Float64()*30
 		}
 
-		if active.Label == "dynamic" {
+		if active().Label == "dynamic" {
 			app.Open("#main", pageDynamic())
 		}
 	})

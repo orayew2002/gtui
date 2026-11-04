@@ -178,6 +178,7 @@ type Style struct {
 
 	ZIndex    int
 	Scroll    bool
+	ScrollX   bool
 	Focusable bool
 
 	Title      string

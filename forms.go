@@ -1,6 +1,7 @@
 package gtui
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/orayew2002/gtui/src/dom"
@@ -54,6 +55,7 @@ func field(class, name, placeholder, kind string, rows int) Component {
 			n.Set("name", name)
 			n.Set("type", kind)
 			n.Set("value", "")
+			n.Set("cursor", "0")
 			n.Set("placeholder", placeholder)
 
 			render := func() { paintField(n) }
@@ -86,31 +88,91 @@ func field(class, name, placeholder, kind string, rows int) Component {
 	}
 }
 
+func caret(n *Node) int {
+	at, err := strconv.Atoi(n.Get("cursor"))
+	if err != nil {
+		at = len([]rune(n.Get("value")))
+	}
+	return clamp(at, 0, len([]rune(n.Get("value"))))
+}
+
+func setCaret(n *Node, at int) {
+	n.Set("cursor", strconv.Itoa(clamp(at, 0, len([]rune(n.Get("value"))))))
+}
+
 func editField(n *Node, e *Event, kind string) bool {
-	value := n.Get("value")
+	runes := []rune(n.Get("value"))
+	at := caret(n)
+
+	write := func(next []rune, cursor int) bool {
+		n.Set("value", string(next))
+		setCaret(n, cursor)
+		return true
+	}
 
 	switch {
-	case e.Key == "backspace":
-		if value == "" {
+	case e.Key == "left":
+		if at == 0 {
 			return false
 		}
-		runes := []rune(value)
-		n.Set("value", string(runes[:len(runes)-1]))
+		setCaret(n, at-1)
 		return true
 
-	case e.Key == "enter" && kind == InputArea:
-		n.Set("value", value+"\n")
+	case e.Key == "right":
+		if at >= len(runes) {
+			return false
+		}
+		setCaret(n, at+1)
 		return true
+
+	case e.Key == "home":
+		setCaret(n, 0)
+		return true
+
+	case e.Key == "end":
+		setCaret(n, len(runes))
+		return true
+
+	case e.Key == "backspace":
+		if at == 0 {
+			return false
+		}
+		return write(append(append([]rune{}, runes[:at-1]...), runes[at:]...), at-1)
+
+	case e.Key == "delete":
+		if at >= len(runes) {
+			return false
+		}
+		return write(append(append([]rune{}, runes[:at]...), runes[at+1:]...), at)
+
+	case e.Key == "enter" && kind == InputArea:
+		return write(insertRune(runes, at, '\n'), at+1)
 
 	case e.Rune >= ' ' && e.Rune != 0:
 		if !allowed(kind, e.Rune) {
 			return false
 		}
-		n.Set("value", value+string(e.Rune))
-		return true
+		return write(insertRune(runes, at, e.Rune), at+1)
 	}
 
 	return false
+}
+
+func insertRune(runes []rune, at int, r rune) []rune {
+	out := make([]rune, 0, len(runes)+1)
+	out = append(out, runes[:at]...)
+	out = append(out, r)
+	return append(out, runes[at:]...)
+}
+
+func clamp(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }
 
 func paintField(n *Node) {
@@ -127,8 +189,13 @@ func paintField(n *Node) {
 		ink = "dim"
 	}
 
-	if n.State.Focus {
-		shown += "▌"
+	if n.State.Focus && value != "" {
+		runes := []rune(shown)
+		at := clamp(caret(n), 0, len(runes))
+		shown = string(runes[:at]) + "▌" + string(runes[at:])
+	} else if n.State.Focus {
+		shown = "▌" + shown
+		ink = "dim"
 	}
 
 	n.Clear()
@@ -441,6 +508,7 @@ func (a *App) SetValue(sel, value string) *App {
 
 	node.Set("value", value)
 	if node.Has("type") {
+		setCaret(node, len([]rune(value)))
 		paintField(node)
 	}
 

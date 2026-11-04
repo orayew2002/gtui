@@ -19,6 +19,8 @@ const (
 	clearAll = "\x1b[2J\x1b[H"
 	wrapOff  = "\x1b[?7l"
 	wrapOn   = "\x1b[?7h"
+	pasteOn  = "\x1b[?2004h"
+	pasteOff = "\x1b[?2004l"
 )
 
 type Options struct {
@@ -72,7 +74,7 @@ func Open(opts Options) (*Terminal, error) {
 	if opts.Mouse {
 		setup += mouseOn
 	}
-	setup += wrapOff
+	setup += wrapOff + pasteOn
 	t.write(setup)
 
 	t.sig = make(chan os.Signal, 1)
@@ -94,7 +96,7 @@ func (t *Terminal) Close() {
 	signal.Stop(t.sig)
 
 	var teardown string
-	teardown += wrapOn + reset
+	teardown += pasteOff + wrapOn + reset
 	if t.opts.Mouse {
 		teardown += mouseOff
 	}
@@ -110,6 +112,19 @@ func (t *Terminal) Close() {
 		term.Restore(t.fd, t.state)
 		t.state = nil
 	}
+}
+
+func (t *Terminal) Mouse(on bool) {
+	if on == t.opts.Mouse {
+		return
+	}
+
+	t.opts.Mouse = on
+	if on {
+		t.write(mouseOn)
+		return
+	}
+	t.write(mouseOff)
 }
 
 func (t *Terminal) Size() (int, int) {

@@ -19,9 +19,47 @@ type TableOptions struct {
 	Selectable bool
 	OnSelect   func(index int)
 
+	RowActions []RowAction
+	RowWidth   string
+
 	Page string
 	Prev func(*Event)
 	Next func(*Event)
+}
+
+type RowAction struct {
+	Label string
+	Class string
+	Run   func(index int)
+}
+
+func rowActions(index int, opts TableOptions) Component {
+	buttons := make([]Component, 0, len(opts.RowActions))
+
+	for _, action := range opts.RowActions {
+		at, run := index, action.Run
+
+		class := action.Class
+		if class == "" {
+			class = "text-muted"
+		}
+
+		buttons = append(buttons, Button(class+" focus:bold focus:underline", action.Label,
+			func(e *Event) {
+				e.StopPropagation()
+				if run != nil {
+					run(at)
+				}
+			},
+		))
+	}
+
+	width := opts.RowWidth
+	if width == "" {
+		width = "w-14"
+	}
+
+	return Div(width+" shrink-0 row gap-1 justify-end", buttons...)
 }
 
 func DataTable(opts TableOptions) Component {
@@ -36,13 +74,26 @@ func DataTable(opts TableOptions) Component {
 		body = append(body, tableToolbar(pad, opts))
 	}
 
-	body = append(body, tableHeader(pad, opts.Cols))
+	cols := opts.Cols
+	if len(opts.RowActions) > 0 {
+		width := opts.RowWidth
+		if width == "" {
+			width = "w-14"
+		}
+		cols = append(append([]Col{}, cols...), Col{Label: "", Width: width, Right: true})
+		opts.Cols = cols
+	}
+
+	body = append(body, tableHeader(pad, cols))
 
 	switch {
 	case len(opts.Rows) == 0:
 		body = append(body, tableEmpty(pad, opts))
 	default:
 		for i, row := range opts.Rows {
+			if len(opts.RowActions) > 0 {
+				row = append(append([]Component{}, row...), rowActions(i, opts))
+			}
 			body = append(body, tableBodyRow(pad, i, row, opts))
 		}
 	}

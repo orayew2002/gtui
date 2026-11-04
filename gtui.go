@@ -1,6 +1,7 @@
 package gtui
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
@@ -40,6 +41,9 @@ type App struct {
 	redrawCh chan struct{}
 	stopCh   chan struct{}
 
+	onResize    func(int, int)
+	mouse       bool
+	cursor      bool
 	modalOpen   bool
 	beforeModal *dom.Node
 	view        func() Component
@@ -59,6 +63,7 @@ func Init() *App {
 	return &App{
 		root:     dom.NewElement(dom.RootTag),
 		base:     base,
+		mouse:    true,
 		quitKeys: map[string]bool{"q": true, "ctrl+c": true},
 		binds:    map[string]func(){},
 		tasks:    make(chan func(), 64),
@@ -162,7 +167,11 @@ func (a *App) dropDetachedFocus() {
 }
 
 func (a *App) Render() error {
-	t, err := term.Open(term.DefaultOptions())
+	options := term.DefaultOptions()
+	options.Mouse = a.mouse
+	options.HideCursor = !a.cursor
+
+	t, err := term.Open(options)
 	if err != nil {
 		return fmt.Errorf("gtui: open terminal: %w", err)
 	}
@@ -190,6 +199,10 @@ func (a *App) Render() error {
 		case <-t.Resized():
 			w, h := t.Size()
 			a.screen.Resize(w, h)
+
+			if a.onResize != nil {
+				a.onResize(w, h)
+			}
 			a.frame()
 
 		case ev, ok := <-t.Events():
@@ -294,6 +307,46 @@ func (a *App) ToggleTheme() *App {
 }
 
 func (a *App) ThemeName() string { return colors.Active().Name }
+
+func (a *App) UseMouse(on bool) *App {
+	a.mouse = on
+
+	if a.terminal != nil {
+		a.terminal.Mouse(on)
+	}
+	return a
+}
+
+func (a *App) UseCursor(on bool) *App {
+	a.cursor = on
+	return a.Redraw()
+}
+
+func (a *App) Size() (int, int) {
+	if a.screen != nil {
+		return a.screen.Size()
+	}
+	if a.terminal != nil {
+		return a.terminal.Size()
+	}
+	return 80, 24
+}
+
+func (a *App) OnResize(fn func(width, height int)) *App {
+	a.onResize = fn
+	return a
+}
+
+func (a *App) Copy(text string) *App {
+	if a.screen == nil || text == "" {
+		return a
+	}
+
+	encoded := base64.StdEncoding.EncodeToString([]byte(text))
+	fmt.Fprintf(a.screen, "\x1b]52;c;%s\x07", encoded)
+
+	return a
+}
 
 func (a *App) Bind(key string, fn func()) *App {
 	if fn == nil {
@@ -446,10 +499,25 @@ func (a *App) frame() {
 
 	paint.Paint(a.screen.Back(), tree)
 
+	if a.cursor {
+		a.placeCursor()
+	}
+
 	if err := a.screen.Flush(); err != nil && a.err == nil {
 		a.err = err
 		a.Stop()
 	}
+}
+
+func (a *App) placeCursor() {
+	box := a.findBox(a.focus)
+	if box == nil || a.focus == nil || !a.focus.Has("type") {
+		a.screen.HideCursor()
+		return
+	}
+
+	at := caret(a.focus)
+	a.screen.ShowCursorAt(box.Content.X+at, box.Content.Y)
 }
 
 func (a *App) drainTasks() {

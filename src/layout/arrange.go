@@ -24,6 +24,12 @@ func arrange(b *Box, x, y, availW, availH int, clip render.Rect) {
 	}
 
 	scroll := scrollOffset(b)
+	shift := scrollOffsetX(b)
+
+	content := b.Content
+	if shift != 0 {
+		b.Content.X -= shift
+	}
 
 	switch st.Display {
 	case style.DisplayFlex:
@@ -38,6 +44,8 @@ func arrange(b *Box, x, y, availW, availH int, clip render.Rect) {
 	default:
 		arrangeBlock(b, childClip, scroll)
 	}
+
+	b.Content = content
 
 	arrangeAbsolute(b, childClip)
 	sortByZ(b)
@@ -76,6 +84,21 @@ func scrollOffset(b *Box) int {
 		b.Node.ScrollY = 0
 	}
 	return b.Node.ScrollY
+}
+
+func scrollOffsetX(b *Box) int {
+	if b.Node == nil || !b.Style.ScrollX {
+		return 0
+	}
+
+	if b.Node.ScrollX > b.ScrollMaxX {
+		b.Node.ScrollX = b.ScrollMaxX
+	}
+	if b.Node.ScrollX < 0 {
+		b.Node.ScrollX = 0
+	}
+
+	return b.Node.ScrollX
 }
 
 func arrangeBlock(b *Box, clip render.Rect, scroll int) {

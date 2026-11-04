@@ -38,6 +38,7 @@ type Node struct {
 	State State
 
 	ScrollY int
+	ScrollX int
 
 	Canvas *Canvas
 
