@@ -18,11 +18,13 @@ func pageProjects() gtui.Component {
 		return gtui.Column("grow clip gap-1",
 			// one bar to get back out, so the project below owns the rest
 			gtui.Row("gap-2 items-center shrink-0",
-				gtui.Button("pill border-accent text-accent nowrap #pj-back", "‹ projects", func(e *gtui.Event) {
+				gtui.Button("pill border-accent text-accent nowrap shrink-0 #pj-back", "‹ projects", func(e *gtui.Event) {
 					openProject = ""
 					show(current())
 				}),
-				gtui.Text("text-ink bold nowrap", project.Name),
+				gtui.Text("text-ink bold nowrap shrink-0", project.Name),
+				// only the description gives way on a narrow screen: the way
+				// out and the name of the thing you are in must not
 				gtui.Text("text-muted dim truncate", project.About),
 			),
 			// the project draws itself from the gallery's tick, the same way it

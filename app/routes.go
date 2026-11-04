@@ -10,6 +10,7 @@ import (
 
 type page struct {
 	Key   string
+	Icon  string // the name of one of the framework's icons
 	Title string
 	About string
 	Body  func() gtui.Component
@@ -19,23 +20,23 @@ type page struct {
 // and one function in its own file.
 func pages() []page {
 	return []page{
-		{Key: "1", Title: "buttons", About: "buttons, links, dropdowns and the command palette", Body: pageButtons},
-		{Key: "2", Title: "inputs", About: "text, number, password, area, checkbox, switch", Body: pageInputs},
-		{Key: "3", Title: "pickers", About: "selector, autocomplete, range, radios, calendar", Body: pagePickers},
-		{Key: "4", Title: "tables", About: "data tables with zebra rows, actions and a pager", Body: pageTables},
-		{Key: "5", Title: "lists", About: "trees, accordions, scroll lists and key/value rows", Body: pageLists},
-		{Key: "6", Title: "feedback", About: "alerts, toasts, modals, progress and spinners", Body: pageFeedback},
-		{Key: "7", Title: "charts", About: "bars, sparklines, line charts, gauges and donuts", Body: pageCharts},
-		{Key: "8", Title: "media", About: "pictures, backdrops, video and music players", Body: pageMedia},
-		{Key: "9", Title: "motion", About: "animated text, pulses, waves and tickers", Body: pageMotion},
-		{Key: "0", Title: "layout", About: "rows, columns, grids, splits and scrolling", Body: pageLayout},
-		{Key: "i", Title: "icons", About: "every icon the framework ships", Body: pageIcons},
-		{Key: "t", Title: "themes", About: "theme tokens and the light and dark palettes", Body: pageThemes},
-		{Key: "l", Title: "i18n", About: "languages, translation keys and switching at runtime", Body: pageI18n},
-		{Key: "s", Title: "style", About: "the utility classes every component takes", Body: pageStyle},
-		{Key: "e", Title: "extras", About: "navbars, panels, windows, timelines and tags", Body: pageExtras},
-		{Key: "v", Title: "views", About: "chat, logs, code, address and status bars", Body: pageViews},
-		{Key: "k", Title: "projects", About: "the example apps, opened right here", Body: pageProjects},
+		{Key: "1", Icon: "card", Title: "buttons", About: "buttons, links, dropdowns and the command palette", Body: pageButtons},
+		{Key: "2", Icon: "keyboard", Title: "inputs", About: "text, number, password, area, checkbox, switch", Body: pageInputs},
+		{Key: "3", Icon: "filter", Title: "pickers", About: "selector, autocomplete, range, radios, calendar", Body: pagePickers},
+		{Key: "4", Icon: "grid", Title: "tables", About: "data tables with zebra rows, actions and a pager", Body: pageTables},
+		{Key: "5", Icon: "list", Title: "lists", About: "trees, accordions, scroll lists and key/value rows", Body: pageLists},
+		{Key: "6", Icon: "bell", Title: "feedback", About: "alerts, toasts, modals, progress and spinners", Body: pageFeedback},
+		{Key: "7", Icon: "chartBar", Title: "charts", About: "bars, sparklines, line charts, gauges and donuts", Body: pageCharts},
+		{Key: "8", Icon: "image", Title: "media", About: "pictures, backdrops, video and music players", Body: pageMedia},
+		{Key: "9", Icon: "sync", Title: "motion", About: "animated text, pulses, waves and tickers", Body: pageMotion},
+		{Key: "0", Icon: "split", Title: "layout", About: "rows, columns, grids, splits and scrolling", Body: pageLayout},
+		{Key: "i", Icon: "star", Title: "icons", About: "every icon the framework ships", Body: pageIcons},
+		{Key: "t", Icon: "circleHalf", Title: "themes", About: "theme tokens and the light and dark palettes", Body: pageThemes},
+		{Key: "l", Icon: "globe", Title: "i18n", About: "languages, translation keys and switching at runtime", Body: pageI18n},
+		{Key: "s", Icon: "pencil", Title: "style", About: "the utility classes every component takes", Body: pageStyle},
+		{Key: "e", Icon: "puzzle", Title: "extras", About: "navbars, panels, windows, timelines and tags", Body: pageExtras},
+		{Key: "v", Icon: "panel", Title: "views", About: "chat, logs, code, address and status bars", Body: pageViews},
+		{Key: "k", Icon: "rocket", Title: "projects", About: "the example apps, opened right here", Body: pageProjects},
 	}
 }
 

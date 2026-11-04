@@ -68,12 +68,14 @@ func sidebar() gtui.Component {
 		items = append(items, navLink(item, roomy))
 	}
 
-	width := "w-4"
+	width := "w-8"
 	if roomy {
-		width = "w-16"
+		width = "w-17"
 	}
 
-	return gtui.Column(width+" shrink-0 clip border-r border-line py-1 key-n key-hide #nav", items...)
+	// the list scrolls rather than squeezes: on a short terminal there are more
+	// pages than rows, and a squeezed link is a link that disappears
+	return gtui.Column(width+" shrink-0 clip scroll border-r border-line py-1 key-n key-hide #nav", items...)
 }
 
 // phrase is T with something to fall back on: T answers with the key itself
@@ -88,19 +90,25 @@ func phrase(key, fallback string) string {
 // navLink is a link with an empty target: the click handler in routes.go does
 // the swapping, so the sidebar costs nothing to build.
 func navLink(item page, roomy bool) gtui.Component {
-	title, box := item.Key, "row text-center truncate text-muted"
+	// the icon says what the page is at a glance, the key says how to reach it,
+	// and the title only fits while the sidebar is open. The glyph goes in the
+	// label because Href's trailing arguments are the page it swaps in, not the
+	// contents of the link.
+	glyph, _ := gtui.IconGlyph(item.Icon)
+
+	label := glyph + " " + item.Key
 	if roomy {
-		title, box = item.Key+"  "+phrase("nav."+item.Title, item.Title), "row px-1 truncate text-muted"
+		label += " " + phrase("nav."+item.Title, item.Title)
 	}
 
 	// the selected item is marked with a fill, not a border: a border would
 	// take a column and shove the label sideways
-	class := box +
+	class := "row gap-1 px-1 shrink-0 truncate text-muted" +
 		" hover:text-ink" +
 		" focus:text-accent focus:bold" +
 		" current:bg-raised current:text-ink current:bold" +
 		" key-" + item.Key + " key-hide" +
 		" #nav" + item.Key
 
-	return gtui.Href(class, title, "")
+	return gtui.Href(class, label, "")
 }
