@@ -15,6 +15,7 @@ import (
 
 	"github.com/orayew2002/gtui/src/colors"
 	"github.com/orayew2002/gtui/src/dom"
+	"github.com/orayew2002/gtui/src/layout"
 )
 
 func Image(class, path string, width, height int) Component {
@@ -62,16 +63,37 @@ func imageFromComponent(class string, src image.Image, width, height int, child 
 		return Div(class, child...)
 	}
 
+	// no size at all means fill the box this lands in, the way a background
+	// picture does: the canvas starts empty so it adds nothing to the layout,
+	// and the layout pass samples the picture once it knows the room there is
+	if width < 1 && height < 1 {
+		canvas := dom.NewCanvas(0, 0)
+		canvas.Src = src
+
+		return canvasComponent(class, canvas, child...)
+	}
+
 	width, height = fitImage(src.Bounds(), width, height)
 	if width < 1 || height < 1 {
 		return Div(class, child...)
 	}
 
 	canvas := dom.NewCanvas(width, height)
-	pick := newSampler(src, width, height*2)
+	drawImage(canvas, src)
 
-	for y := range height {
-		for x := range width {
+	return canvasComponent(class, canvas, child...)
+}
+
+// drawImage samples a picture into a canvas, two pixels to a cell.
+func drawImage(canvas *dom.Canvas, src image.Image) {
+	if canvas.W < 1 || canvas.H < 1 {
+		return
+	}
+
+	pick := newSampler(src, canvas.W, canvas.H*2)
+
+	for y := range canvas.H {
+		for x := range canvas.W {
 			top, hasTop := pick.at(x, y*2)
 			bottom, hasBottom := pick.at(x, y*2+1)
 
@@ -85,8 +107,37 @@ func imageFromComponent(class string, src image.Image, width, height int, child 
 			}
 		}
 	}
+}
 
-	return canvasComponent(class, canvas, child...)
+// remeasureCanvases resamples every picture that fills its box, once layout has
+// said how big that box is. A backdrop asked to fill starts empty, so without
+// this pass it would never be drawn, and after a resize it would be drawn at
+// the old size.
+func (a *App) remeasureCanvases() bool {
+	if a.tree == nil {
+		return false
+	}
+
+	changed := false
+
+	a.tree.Walk(func(b *layout.Box) bool {
+		if b.Node == nil || b.Node.Canvas == nil || b.Node.Canvas.Src == nil {
+			return true
+		}
+		canvas := b.Node.Canvas
+
+		width, height := b.Content.W, b.Content.H
+		if width < 1 || height < 1 || (canvas.W == width && canvas.H == height) {
+			return true
+		}
+
+		canvas.Resize(width, height)
+		drawImage(canvas, canvas.Src)
+		changed = true
+		return true
+	})
+
+	return changed
 }
 
 func imageFallback(class, path string, width, height int, child ...Component) Component {

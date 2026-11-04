@@ -45,8 +45,14 @@ func pageThemes() gtui.Component {
 				}),
 			),
 			card("f", "terminal switches",
-				note("the caret and the mouse can be handed back to the terminal"),
+				note("the caret, the mouse and the background can go back to the terminal"),
 				gtui.Row("gap-x-2 flex-wrap",
+					gtui.Button("pill border-accent text-accent #th-bare", "see through", func(e *gtui.Event) {
+						seeThrough = !seeThrough
+						app.Transparent(seeThrough)
+						show(current())
+						say("th-switches", "Transparent(%v)", seeThrough)
+					}),
 					gtui.Button("pill border-accent text-accent #th-caret", "caret", func(e *gtui.Event) {
 						caretOn = !caretOn
 						app.UseCursor(caretOn)

@@ -16,6 +16,28 @@ func Apply(s *Style, class string) bool {
 
 	rest := trimPrefix(class)
 
+	// a /N suffix says how much of the colour reaches the screen, so
+	// bg-black/40 and bg-[#000000]/40 both read the same way. Only a
+	// background takes one, because w-1/3 spells a fraction with the same
+	// character.
+	rest, alpha, translucent := splitAlpha(rest)
+
+	if !applyBase(s, rest) {
+		return false
+	}
+
+	if translucent {
+		if alpha == 0 {
+			s.Background = Paint{}
+			return true
+		}
+		s.Background.Alpha = alpha
+	}
+
+	return true
+}
+
+func applyBase(s *Style, rest string) bool {
 	key, arb, hasArb := splitArbitrary(rest)
 	if hasArb {
 		return applyArbitrary(s, key, arb)
@@ -25,6 +47,25 @@ func Apply(s *Style, class string) bool {
 		return true
 	}
 	return applyValued(s, rest)
+}
+
+// splitAlpha peels a /N percentage off a background class.
+func splitAlpha(rest string) (string, uint8, bool) {
+	if !strings.HasPrefix(rest, "bg-") {
+		return rest, 255, false
+	}
+
+	cut := strings.LastIndexByte(rest, '/')
+	if cut <= 0 {
+		return rest, 255, false
+	}
+
+	pct, err := strconv.Atoi(rest[cut+1:])
+	if err != nil || pct < 0 || pct > 100 {
+		return rest, 255, false
+	}
+
+	return rest[:cut], uint8(pct * 255 / 100), true
 }
 
 // Classes apply left to right, so a later class overrides an earlier one and a
@@ -354,11 +395,29 @@ func applyValued(s *Style, rest string) bool {
 		s.Focusable = true
 		return true
 
+	case "bg-opacity":
+		// bg-opacity-0 hands the cells back to the terminal, so its own colour
+		// or its translucency shows through the interface
+		pct, ok := atoi(value)
+		if !ok || pct < 0 || pct > 100 {
+			return false
+		}
+		if pct == 0 {
+			s.Background = Paint{}
+			return true
+		}
+		if !s.Background.Set {
+			s.Background = P(colors.Active().Canvas)
+		}
+		s.Background.Alpha = uint8(pct * 255 / 100)
+		return true
+
 	case "bg":
 		if value == "transparent" || value == "none" {
 			s.Background = Paint{}
 			return true
 		}
+
 		c, ok := colors.Parse(value)
 		if !ok {
 			return false

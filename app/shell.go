@@ -12,8 +12,17 @@ func compact() bool {
 	return width < narrow
 }
 
+var seeThrough = false
+
 func shell() gtui.Component {
-	return gtui.Row("full bg-canvas p-1 gap-1",
+	// seeThrough is the themes page switch: with it on the gallery paints no
+	// background of its own and the terminal's shows through
+	fill := "bg-canvas"
+	if seeThrough {
+		fill = "bg-transparent"
+	}
+
+	return gtui.Row("full "+fill+" p-1 gap-1",
 		sidebar(),
 		// clip is the min-width:0 of this layout: without it the content pane
 		// is as wide as its widest child and pushes past the right edge.

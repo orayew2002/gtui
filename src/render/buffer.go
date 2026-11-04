@@ -133,13 +133,45 @@ func (b *Buffer) Fill(r Rect, c Cell) {
 	}
 }
 
-func (b *Buffer) Blend(r Rect, bg colors.Color) {
+// Blend mixes bg into the cells of r, keeping whatever is already painted there
+// as the layer underneath: alpha 0 leaves them untouched and 255 covers them.
+// A cell with no background of its own is mixed against the theme's canvas,
+// which is the colour the app would have painted there.
+func (b *Buffer) Blend(r Rect, bg colors.Color, alpha uint8) {
+	if alpha == 0 {
+		return
+	}
+
 	r = r.Intersect(Rect{0, 0, b.W, b.H})
+	canvas := colors.Active().Canvas
+
 	for y := r.Y; y < r.Bottom(); y++ {
 		row := b.Cells[y*b.W : (y+1)*b.W]
 		for x := r.X; x < r.Right(); x++ {
-			row[x].Bg, row[x].HasBg = bg, true
+			cell := &row[x]
+
+			under := canvas
+			if cell.HasBg {
+				under = cell.Bg
+			}
+
+			cell.Bg, cell.HasBg = Mix(under, bg, alpha), true
 		}
+	}
+}
+
+// Mix lays over on top of under at the given alpha.
+func Mix(under, over colors.Color, alpha uint8) colors.Color {
+	if alpha >= 255 {
+		return over
+	}
+
+	a, inv := int(alpha), 255-int(alpha)
+
+	return colors.Color{
+		R: uint8((int(over.R)*a + int(under.R)*inv) / 255),
+		G: uint8((int(over.G)*a + int(under.G)*inv) / 255),
+		B: uint8((int(over.B)*a + int(under.B)*inv) / 255),
 	}
 }
 

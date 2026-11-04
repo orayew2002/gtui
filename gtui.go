@@ -34,7 +34,11 @@ type App struct {
 	screen   *render.Screen
 	tree     *layout.Box
 	stale    bool
-	diags    []style.Diagnostic
+
+	// bare leaves the terminal's own background alone, so its colour scheme
+	// or its translucency shows through the interface
+	bare  bool
+	diags []style.Diagnostic
 
 	focus *dom.Node
 	hover *dom.Node
@@ -347,12 +351,34 @@ func (a *App) Theme(theme colors.Theme) *App {
 	a.base.Foreground = style.P(theme.Ink)
 	a.base.Background = style.P(theme.Canvas)
 
+	if a.bare {
+		a.base.Background = style.Paint{}
+	}
+
+	return a.Redraw()
+}
+
+// Transparent hands the background back to the terminal: with it on gtui paints
+// no colour of its own behind the interface, so the terminal's palette, its
+// translucency or the picture behind it stays visible. Boxes that ask for a
+// background still get one, so reach for bg-transparent, or bg-opacity-0, on
+// the ones that should let it through.
+func (a *App) Transparent(on bool) *App {
+	a.bare = on
+
+	if on {
+		a.base.Background = style.Paint{}
+		return a.Redraw()
+	}
+
+	a.base.Background = style.P(colors.Active().Canvas)
 	return a.Redraw()
 }
 
 func (a *App) Colors(fg, bg colors.Color) *App {
 	a.base.Foreground = style.P(fg)
 	a.base.Background = style.P(bg)
+	a.bare = false
 	return a.Redraw()
 }
 
@@ -688,9 +714,14 @@ func (a *App) layout(width, height int) *layout.Box {
 		return nil
 	}
 
-	// a field cannot window its value around the caret until it knows how wide
-	// it ended up, and only layout knows that
+	// a field cannot window its value around the caret, and a backdrop cannot
+	// fill its box, until they know how big they ended up, and only layout
+	// knows that
 	if a.remeasureFields() {
+		tree = a.build(width, height)
+	}
+
+	if a.remeasureCanvases() {
 		tree = a.build(width, height)
 	}
 

@@ -1,6 +1,7 @@
 package dom
 
 import (
+	"image"
 	"strings"
 
 	"github.com/orayew2002/gtui/src/colors"
@@ -320,6 +321,29 @@ type Pixel struct {
 type Canvas struct {
 	W, H   int
 	Pixels []Pixel
+
+	// Src is the picture a canvas that fills its box samples from. It stays nil
+	// for a canvas drawn once at a fixed size; with it set, the layout pass
+	// resamples the picture whenever the box it landed in changes size.
+	Src image.Image
+}
+
+// Resize gives the canvas a new size and throws away what it held.
+func (c *Canvas) Resize(w, h int) {
+	if w < 0 {
+		w = 0
+	}
+	if h < 0 {
+		h = 0
+	}
+
+	c.W, c.H = w, h
+	if need := w * h; need > cap(c.Pixels) {
+		c.Pixels = make([]Pixel, need)
+		return
+	}
+	c.Pixels = c.Pixels[:w*h]
+	clear(c.Pixels)
 }
 
 func NewCanvas(w, h int) *Canvas {

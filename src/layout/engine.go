@@ -26,7 +26,13 @@ func measure(b *Box, availW, availH int) {
 	if c := b.Node.Canvas; c != nil {
 		w, ok := resolveMain(st.Width, availW, st.Margin.Horizontal(), ins.Horizontal())
 		if !ok {
-			w = c.W
+			// a canvas that fills its box has no width of its own, so it takes
+			// the room an ordinary box would, the way a background picture does
+			if c.Src != nil && availW >= 0 {
+				w = availW - st.Margin.Horizontal() - ins.Horizontal()
+			} else {
+				w = c.W
+			}
 		}
 		finishCanvas(b, w, c.H, availH)
 		return

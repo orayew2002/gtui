@@ -43,6 +43,13 @@ func colourClasses() []gtui.Component {
 		inks = append(inks, gtui.Text("px-1 nowrap text-"+name, name))
 	}
 
+	// the same colour at every strength, over a light strip, so the mixing is
+	// plain to see
+	steps := make([]gtui.Component, 0, 5)
+	for _, pct := range []string{"0", "25", "50", "75", "100"} {
+		steps = append(steps, gtui.Text("px-1 nowrap text-ink bg-[#000000]/"+pct, pct+"%"))
+	}
+
 	return []gtui.Component{
 		note("bg-<token>"),
 		gtui.Div("row flex-wrap gap-1", fills...),
@@ -50,9 +57,16 @@ func colourClasses() []gtui.Component {
 		gtui.Div("row flex-wrap gap-1", inks...),
 		gtui.Row("gap-1 items-center",
 			gtui.Text("px-1 nowrap bg-[#7f5af0] text-canvas", "bg-[#7f5af0]"),
-			gtui.Text("px-1 nowrap bg-transparent", "bg-transparent"),
 			gtui.Text("pill nowrap border-accent text-accent", "border-accent"),
 			gtui.Text("pill nowrap border-danger text-danger", "border-danger"),
+		),
+		note("bg-<colour>/<percent> mixes with whatever is painted underneath"),
+		gtui.Div("row bg-[#e8e8e8]", steps...),
+		gtui.Row("gap-2 items-center",
+			gtui.Text("px-1 nowrap bg-transparent", "bg-transparent"),
+			gtui.Text("px-1 nowrap bg-opacity-0", "bg-opacity-0"),
+			gtui.Text("px-1 nowrap bg-accent/40 text-ink", "bg-accent/40"),
+			gtui.Text("dim truncate", "both hand the cells back to whatever is behind"),
 		),
 	}
 }

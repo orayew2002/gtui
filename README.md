@@ -113,7 +113,9 @@ gtui.IconButton("bg-success text-canvas rounded px-2", "check", "Approve", onApp
 gtui.Text("uppercase dim truncate", "a very long caption that gets cut cleanly")
 ```
 
-- **colour** `bg-accent` `text-canvas` `border-danger` `bg-[#1c1c1c]` `bg-transparent` `opacity-50`
+- **colour** `bg-accent` `text-canvas` `border-danger` `bg-[#1c1c1c]` `opacity-50`
+- **see-through** `bg-transparent` and `bg-opacity-0` hand the cells back; `bg-black/40` and
+  `bg-opacity-40` mix with whatever is painted underneath
 - **radius** `rounded` `pill` `rounded-pill` `rounded-none` and the border styles below
 - **border** `border` `thick` `double` `dashed` `soft` `tight` `border-t|r|b|l|x|y`
 - **text** `bold` `dim` `italic` `underline` `strike` `uppercase` `lowercase` `capitalize`
@@ -145,7 +147,8 @@ gtui.Text("uppercase dim truncate", "a very long caption that gets cut cleanly")
 - align `justify-center|between|around|evenly` · `items-*` · `self-*` · `text-left|center|right`
 - border `border` `rounded` `pill` `rounded-pill` `rounded-none` `thick` `double` `dashed` `soft`
   `tight` `border-t|r|b|l|x|y` `border-accent`
-- colour `bg-panel` `text-ink` `border-line` `text-danger` `bg-[#1c1c1c]` `bg-transparent` `opacity-50`
+- colour `bg-panel` `text-ink` `border-line` `text-danger` `bg-[#1c1c1c]` `opacity-50`
+- see-through `bg-transparent` `bg-opacity-0` `bg-opacity-40` `bg-accent/40` `bg-[#000000]/55`
 - text `bold` `dim` `italic` `underline` `strike` `uppercase` `lowercase` `capitalize` `normal-case`
   `truncate` `nowrap` `pre`
 - effects `shadow` `shadow-none`
@@ -212,6 +215,29 @@ done := app.Busy("uploading")   // spinning modal
 defer done()
 ```
 
+## Transparency
+
+A background below full strength is mixed with whatever is painted underneath, so a picture can
+carry readable text and a panel can sit over the page without hiding it.
+
+```go
+gtui.Div("bg-transparent", …)        // paints nothing: what is behind shows
+gtui.Div("bg-opacity-0", …)          // the same thing, said the other way
+gtui.Div("bg-accent/40", …)          // 40% accent over whatever is below
+gtui.Div("bg-[#000000]/55", …)       // a scrim, which is what makes text on a picture readable
+```
+
+The app itself can step aside too, so the terminal's own colour scheme, its translucency or the
+picture behind it stays visible:
+
+```go
+app := gtui.Init().Transparent(true)   // gtui paints no background of its own
+```
+
+`Transparent` leaves boxes that ask for a background alone, so the ones that should let the
+terminal through say `bg-transparent`. It survives a theme switch, and `Transparent(false)` puts
+the theme's canvas back.
+
 ## Pictures
 
 Images decode to half-block cells — two pixels per character — so a 40×12 box shows 40×24 pixels
@@ -230,6 +256,18 @@ gtui.Backdrop("rounded", "cover.jpg", 40, 10,              // picture behind con
 )
 
 gtui.Viewer(gtui.ViewerOptions{Paths: shots, Index: at, Width: 40, Height: 12, Zoom: 2})
+```
+
+A width and height of zero means *fill the box*, the way a background picture does: the canvas adds
+nothing to the layout, takes the room its classes give it, and is resampled whenever that changes.
+One of these around the whole app is a wallpaper.
+
+```go
+gtui.Backdrop("h-6 rounded border-line", "cover.jpg", 0, 0,     // fills the box
+	gtui.Text("bg-[#000000]/55 text-canvas bold", " night sky "),
+)
+
+gtui.Backdrop("full", "wall.png", 0, 0, shell())                 // behind everything
 ```
 
 Animated GIFs load as clips, with frames flattened so each one is a whole picture:
@@ -367,6 +405,7 @@ app.Modal(title, body...) / app.CloseModal() / app.Toast(kind, msg) / app.Palett
 app.Confirm(t, b, fn) / app.Alert(t, b) / app.Prompt(t, l, p, fn) / app.Choose(t, opts, fn) / app.Busy(l)
 app.Focus(node) / app.Focused() / app.Select(sel) / app.Bind(key, fn) / app.QuitOn(keys...)
 app.Theme(t) / app.ToggleTheme() / app.ThemeByName(n) / app.Tokens(edit) / app.Language(code)
+app.Transparent(on)             // let the terminal's own background through
 app.Animate(fps, fn) / app.Every(d, fn) / app.After(d, fn) / app.Do(fn)
 app.Size() / app.OnResize(fn) / app.Copy(text)   // viewport, resize, clipboard
 app.Press(key) / app.Type(text) / app.Flush()    // drive the keyboard from code

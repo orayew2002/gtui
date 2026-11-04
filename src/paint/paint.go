@@ -59,7 +59,11 @@ func Frame(buf *render.Buffer, frame, clip render.Rect, st style.Style) {
 
 	if st.Background.Set {
 		cut.snapshot(buf)
-		buf.Fill(area, render.Cell{Ch: ' ', Bg: st.Background.Color, HasBg: true})
+		if st.Background.Translucent() {
+			buf.Blend(area, st.Background.Color, st.Background.Alpha)
+		} else {
+			buf.Fill(area, render.Cell{Ch: ' ', Bg: st.Background.Color, HasBg: true})
+		}
 		cut.restore(buf)
 	}
 
@@ -71,7 +75,7 @@ func Frame(buf *render.Buffer, frame, clip render.Rect, st style.Style) {
 	if ink := st.BorderColor.Or(st.Foreground); ink.Set {
 		proto.Fg, proto.HasFg = ink.Color, true
 	}
-	if st.Background.Set {
+	if st.Background.Set && !st.Background.Translucent() {
 		proto.Bg, proto.HasBg = st.Background.Color, true
 	}
 

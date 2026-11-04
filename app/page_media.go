@@ -188,6 +188,15 @@ func barsCard() gtui.Component {
 	width, _ := room()
 
 	return cards(
+		card("j", "a picture as the background",
+			note("width and height of zero means fill the box, like a wallpaper"),
+			gtui.BackdropFrom("h-6 rounded border-line", gallery[shot], 0, 0,
+				gtui.Column("gap-0 px-1",
+					gtui.Text("bg-[#000000]/55 text-canvas bold nowrap", " night sky "),
+					gtui.Text("bg-[#000000]/55 text-canvas nowrap", " a scrim keeps it readable "),
+				),
+			),
+		),
 		card("g", "plain transport pieces",
 			note("Video is the one line view, SeekBar the bar inside a player"),
 			gtui.Video("", queue[track], tuneAt, 268, playing),

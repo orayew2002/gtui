@@ -124,9 +124,17 @@ func (e Edges) Vertical() int   { return e.Top + e.Bottom }
 type Paint struct {
 	Color colors.Color
 	Set   bool
+
+	// Alpha is how much of this colour reaches the screen, 255 being all of
+	// it. A background below 255 is mixed with whatever is painted underneath,
+	// which is what puts a readable scrim over a picture.
+	Alpha uint8
 }
 
-func P(c colors.Color) Paint { return Paint{Color: c, Set: true} }
+func P(c colors.Color) Paint { return Paint{Color: c, Set: true, Alpha: 255} }
+
+// Translucent is true when the paint lets some of the layer below through.
+func (p Paint) Translucent() bool { return p.Set && p.Alpha < 255 }
 
 func (p Paint) Or(fallback Paint) Paint {
 	if p.Set {
