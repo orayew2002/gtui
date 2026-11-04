@@ -269,12 +269,21 @@ func mainOffsets(j style.Justify, free, count int) (start, between int) {
 	return 0, 0
 }
 
+// crossStart places a box across the line it sits on. A box larger than the
+// line is left at the start rather than centred or pushed past it: centring it
+// would put half of it before the container, where it would paint over
+// whatever sits above or to the left of it.
 func crossStart(origin, extent, size, before, after int, a style.Align) int {
+	free := extent - size
+	if free < 0 {
+		free = 0
+	}
+
 	switch a {
 	case style.AlignCenter:
-		return origin + (extent-size)/2
+		return origin + free/2
 	case style.AlignEnd:
-		return origin + extent - size - after
+		return origin + free - after + min(after, 0)
 	default:
 		return origin + before
 	}

@@ -2,15 +2,9 @@ package main
 
 import "github.com/orayew2002/gtui"
 
-// narrow is the width under which the sidebar shrinks to its shortcut keys, so
-// a page still has room on an 80 column terminal.
-const narrow = 90
-
-// compact reports whether the shell is in its narrow layout.
-func compact() bool {
-	width, _ := app.Size()
-	return width < narrow
-}
+// The shell is one bar across the top, a column of links down the left and the
+// page itself. Each of the three is separated by a single rule rather than a
+// box of its own, so the only borders on screen belong to the demos.
 
 var seeThrough = false
 
@@ -22,50 +16,64 @@ func shell() gtui.Component {
 		fill = "bg-transparent"
 	}
 
-	return gtui.Row("full "+fill+" p-1 gap-1",
-		sidebar(),
+	return gtui.Column("full "+fill,
+		// the bar is swapped on every navigation, so the box that holds it
+		// carries the id and the bar itself stays a plain component
+		gtui.Div("col shrink-0 #head", topbar()),
 		// clip is the min-width:0 of this layout: without it the content pane
-		// is as wide as its widest child and pushes past the right edge.
-		gtui.Column("grow clip gap-1",
-			gtui.Div("row shrink-0 clip rounded border-line bg-panel px-2 gap-2 #head", header(current())...),
-			gtui.Div("grow clip scroll rounded border-line key-c #main", current().Body()),
+		// is as wide as its widest child and pushes past the right edge
+		gtui.Row("grow clip",
+			sidebar(),
+			gtui.Div("grow clip scroll px-1 py-1 gap-1 key-c key-hide #main", current().Body()),
 		),
 	)
 }
 
-func sidebar() gtui.Component {
-	wide := !compact()
+// topbar carries the brand, where you are, and the two switches that belong to
+// the whole app.
+func topbar() gtui.Component {
+	item := current()
 
-	items := []gtui.Component{brand(wide), gtui.Divider("border-line")}
-
-	for _, item := range pages() {
-		items = append(items, navLink(item, wide))
+	left := []gtui.Component{
+		gtui.IconText("text-accent bold nowrap shrink-0", "terminal", phrase("app.name", "gtui")),
+		gtui.Text("text-line nowrap shrink-0", "│"),
+		gtui.Text("text-ink bold nowrap shrink-0", phrase("nav."+item.Title, item.Title)),
 	}
 
-	items = append(items, gtui.Spacer())
-	if wide {
-		items = append(items, gtui.Divider("border-line"), gtui.IconText("text-muted", "search", "ctrl+p"))
-	} else {
-		items = append(items, gtui.Icon("text-muted", "search"))
+	if !compact() {
+		left = append(left, gtui.Text("text-muted dim truncate", item.About))
 	}
 
-	width := "w-5"
-	if wide {
-		width = "w-18"
+	right := []gtui.Component{
+		gtui.Spacer(),
+		gtui.Button("shrink-0 text-muted focus:text-ink focus:bold #mode", "◐ "+app.ThemeName(),
+			func(e *gtui.Event) { app.ToggleTheme() },
+		),
+		gtui.Text("text-muted dim nowrap shrink-0", "⌕ ctrl+p"),
 	}
 
-	return gtui.Column(width+" shrink-0 clip rounded border-line bg-panel px-1 key-n #nav", items...)
+	return gtui.Column("shrink-0",
+		gtui.Row("gap-2 items-center px-1", append(left, right...)...),
+		gtui.Divider("border-line"),
+	)
 }
 
-func brand(wide bool) gtui.Component {
-	if !wide {
-		return gtui.Icon("text-accent bold", "terminal")
+// sidebar is the page list. It keeps its own column of keys on a narrow screen
+// and spells the titles out when there is room.
+func sidebar() gtui.Component {
+	roomy := !compact()
+
+	items := make([]gtui.Component, 0, len(pages())+2)
+	for _, item := range pages() {
+		items = append(items, navLink(item, roomy))
 	}
 
-	return gtui.Row("gap-1",
-		gtui.Icon("text-accent bold", "terminal"),
-		gtui.Text("grow text-ink bold truncate", phrase("app.name", "gtui gallery")),
-	)
+	width := "w-4"
+	if roomy {
+		width = "w-16"
+	}
+
+	return gtui.Column(width+" shrink-0 clip border-r border-line py-1 key-n key-hide #nav", items...)
 }
 
 // phrase is T with something to fall back on: T answers with the key itself
@@ -79,30 +87,20 @@ func phrase(key, fallback string) string {
 
 // navLink is a link with an empty target: the click handler in routes.go does
 // the swapping, so the sidebar costs nothing to build.
-func navLink(item page, wide bool) gtui.Component {
+func navLink(item page, roomy bool) gtui.Component {
 	title, box := item.Key, "row text-center truncate text-muted"
-	if wide {
-		title, box = item.Key+" "+phrase("nav."+item.Title, item.Title), "row px-1 truncate text-muted"
+	if roomy {
+		title, box = item.Key+"  "+phrase("nav."+item.Title, item.Title), "row px-1 truncate text-muted"
 	}
 
+	// the selected item is marked with a fill, not a border: a border would
+	// take a column and shove the label sideways
 	class := box +
 		" hover:text-ink" +
-		" focus:bg-line focus:text-ink focus:bold" +
-		" current:bg-line current:text-ink current:bold" +
+		" focus:text-accent focus:bold" +
+		" current:bg-raised current:text-ink current:bold" +
 		" key-" + item.Key + " key-hide" +
 		" #nav" + item.Key
 
 	return gtui.Href(class, title, "")
-}
-
-func header(item page) []gtui.Component {
-	return []gtui.Component{
-		gtui.Column("grow clip",
-			gtui.Text("text-ink bold truncate", item.Title),
-			gtui.Text("text-muted truncate", item.About),
-		),
-		gtui.Button("shrink-0 text-muted focus:text-ink focus:bold #mode", "◐ theme",
-			func(e *gtui.Event) { app.ToggleTheme() },
-		),
-	}
 }

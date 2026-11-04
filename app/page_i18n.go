@@ -19,7 +19,7 @@ func pageI18n() gtui.Component {
 		),
 	}
 
-	if wideScreen() {
+	if wide() {
 		rows = append(rows, card("g", phrase("i18n.live", "switching rebuilds the view"),
 			gtui.CodeView(gtui.CodeOptions{
 				Lines: []string{
@@ -73,7 +73,7 @@ func languageButtons() []gtui.Component {
 
 func keyTable() gtui.Component {
 	keys := shownKeys[:3]
-	if wideScreen() {
+	if wide() {
 		keys = shownKeys
 	}
 
@@ -100,7 +100,7 @@ func phrases() []gtui.Component {
 		gtui.Text("text-warning truncate", gtui.T("msg.nowhere")),
 	}
 
-	if wideScreen() {
+	if wide() {
 		rows = append(rows, note("en.json is the fallback, and a key no file has shows itself"))
 	}
 

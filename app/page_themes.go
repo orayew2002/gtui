@@ -79,7 +79,7 @@ func swatches() []gtui.Component {
 			gtui.Text("shrink-0 nowrap bg-"+name, "  "),
 			gtui.Text("w-8 truncate text-muted", name),
 		}
-		if wideScreen() {
+		if wide() {
 			if colour, ok := colors.Token(name); ok {
 				cells = append(cells, gtui.Text("dim nowrap", colour.Hex()))
 			}

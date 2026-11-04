@@ -643,8 +643,13 @@ func BackdropFrom(class string, src image.Image, width, height int, child ...Com
 }
 
 type ViewerOptions struct {
-	Class    string
-	Paths    []string
+	Class string
+
+	// Paths are pictures to read off disk. Images are pictures already in
+	// memory, for an app that draws or receives its own. Give one or the other.
+	Paths  []string
+	Images []image.Image
+
 	Index    int
 	Width    int
 	Height   int
@@ -652,12 +657,20 @@ type ViewerOptions struct {
 	OnChange func(index, zoom int)
 }
 
+// count is how many pictures the viewer has to show.
+func (o ViewerOptions) count() int {
+	if len(o.Paths) > 0 {
+		return len(o.Paths)
+	}
+	return len(o.Images)
+}
+
 const viewerMaxZoom = 8
 
 // Viewer owns its keys: the arrows walk the list, + and − zoom, and OnChange
 // reports both back to the app.
 func Viewer(opts ViewerOptions) Component {
-	if len(opts.Paths) == 0 {
+	if opts.count() == 0 {
 		return Div(opts.Class, Text("dim", "no images"))
 	}
 
@@ -669,7 +682,7 @@ func Viewer(opts ViewerOptions) Component {
 	}
 	opts.Zoom = clampInt(opts.Zoom, 1, viewerMaxZoom)
 
-	start := wrapIndex(opts.Index, len(opts.Paths))
+	start := wrapIndex(opts.Index, opts.count())
 
 	return Component{
 		class: opts.Class,
@@ -690,7 +703,7 @@ func Viewer(opts ViewerOptions) Component {
 			draw()
 
 			move := func(index, zoom int) {
-				index = wrapIndex(index, len(opts.Paths))
+				index = wrapIndex(index, opts.count())
 				zoom = clampInt(zoom, 1, viewerMaxZoom)
 
 				n.Set("index", itoa(index))
@@ -732,19 +745,28 @@ func Viewer(opts ViewerOptions) Component {
 }
 
 func viewerChrome(opts ViewerOptions, index, zoom int) []Component {
-	path := opts.Paths[wrapIndex(index, len(opts.Paths))]
+	count := opts.count()
+	at := wrapIndex(index, count)
 
-	name := path
-	if i := strings.LastIndexByte(name, '/'); i >= 0 {
-		name = name[i+1:]
+	name, picture := "", Component{}
+
+	if len(opts.Paths) > 0 {
+		name = opts.Paths[at]
+		if i := strings.LastIndexByte(name, '/'); i >= 0 {
+			name = name[i+1:]
+		}
+		picture = Fit("", opts.Paths[at], opts.Width*zoom, opts.Height*zoom)
+	} else {
+		name = "picture " + itoa(at+1)
+		picture = FitFrom("", opts.Images[at], opts.Width*zoom, opts.Height*zoom)
 	}
 
 	return []Component{
 		Div("row gap-1",
 			Text("grow nowrap text-ink bold", name),
-			Text("nowrap dim", "%d / %d", wrapIndex(index, len(opts.Paths))+1, len(opts.Paths)),
+			Text("nowrap dim", "%d / %d", at+1, count),
 		),
-		Fit("", path, opts.Width*zoom, opts.Height*zoom),
+		picture,
 		Div("row gap-2 dim",
 			Text("nowrap", "← → image"),
 			Text("nowrap", "+ − zoom"),

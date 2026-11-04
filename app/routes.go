@@ -65,12 +65,13 @@ func goTo(title string) {
 	}
 }
 
-// show swaps the page, the header and the selected nav item together. Every
-// way of navigating ends here.
+// show swaps the page, the bar above it and the selected nav item together.
+// Every way of navigating ends here.
 func show(item page) {
 	currentKey = item.Key
+
 	app.Open("#main", item.Body())
-	app.Open("#head", header(item)...)
+	app.Open("#head", topbar())
 	app.Select("#nav" + item.Key)
 }
 

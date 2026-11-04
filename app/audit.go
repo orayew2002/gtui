@@ -203,26 +203,58 @@ func auditWheel(item page) {
 }
 
 func auditKeys(item page) {
+	// a pure tab sweep first: nothing else may move the focus, or the ring
+	// cannot be told apart from the keys that walk inside a box
 	begin(item, wideW, wideH)
 
-	keys := []string{"enter", "down", "up", "right", "left", "pagedown", "pageup", "home", "end", "esc"}
-	stops := 0
+	const most = 200
 
-	app.Root().Walk(func(n *dom.Node) bool {
-		if n.IsElement() && jumpable(n) {
-			stops++
-		}
-		return true
-	})
+	ring := make([]*dom.Node, 0, most)
+	seen := map[*dom.Node]int{}
 
-	seen := map[*dom.Node]bool{}
-
-	for step := 0; step < stops+4; step++ {
+	for step := range most {
 		app.Press("tab")
 
-		if focused := app.Focused(); focused != nil {
-			seen[focused] = true
+		focused := app.Focused()
+		if focused == nil {
+			fail("tab %d left the keyboard nowhere", step)
+			return
 		}
+
+		sane("after tab", app.Snapshot(wideW, wideH), wideW)
+		if lastFailure != "" {
+			return
+		}
+
+		if at, ok := seen[focused]; ok {
+			// the ring closed: it has to start where it started, so tab
+			// cannot leave a stop behind and never come back to it
+			if at != 0 {
+				fail("tab came back to stop %d instead of the first one", at)
+				return
+			}
+			if len(ring) < 3 {
+				fail("tab only reached %d stops before repeating", len(ring))
+				return
+			}
+			break
+		}
+
+		seen[focused] = step
+		ring = append(ring, focused)
+	}
+
+	if len(ring) >= most {
+		fail("tab never came back to where it started in %d presses", most)
+		return
+	}
+
+	// then the keys a person presses inside a box, at every stop, which must
+	// leave the page sane whatever they do
+	keys := []string{"enter", "down", "up", "right", "left", "pagedown", "pageup", "home", "end", "esc"}
+
+	for step := range min(len(ring), 24) {
+		app.Press("tab")
 
 		for _, key := range keys {
 			app.Press(key)
@@ -241,10 +273,6 @@ func auditKeys(item page) {
 				return
 			}
 		}
-	}
-
-	if stops > 1 && len(seen) < 2 {
-		fail("tab reached %d of %d stops, the keyboard is stuck", len(seen), stops)
 	}
 }
 
@@ -269,7 +297,9 @@ func auditFocusVisible(item page) {
 			continue
 		}
 
-		if !strings.Contains(shot, word) {
+		// uppercase and the other transforms happen at paint time, so the
+		// screen can spell the label differently from the node
+		if !strings.Contains(strings.ToLower(shot), strings.ToLower(word)) {
 			fail("focus sits on %q at tab %d but it is not on screen", word, step)
 			return
 		}

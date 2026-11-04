@@ -13,7 +13,7 @@ import (
 // rows of icons line up.
 var icons = map[string]string{
 	"home": "⌂", "search": "⌕", "settings": "⚙", "user": "◍", "users": "⚇",
-	"file": "▤", "folder": "▸", "folderOpen": "▾", "image": "▣", "video": "▶",
+	"file": "▤", "folder": "▰", "folderOpen": "▱", "image": "▣", "video": "▶",
 	"music": "♪", "sound": "♫", "mute": "⊘", "play": "▶", "pause": "⏸",
 	"stop": "■", "next": "⏭", "prev": "⏮", "record": "●", "disk": "⊙",
 	"check": "✓", "cross": "✗", "plus": "+", "minus": "−", "edit": "✎",
@@ -22,7 +22,7 @@ var icons = map[string]string{
 	"heart": "♥", "info": "i", "warning": "!", "error": "✗", "ok": "✓",
 	"left": "‹", "right": "›", "up": "⌃", "down": "⌄", "back": "←",
 	"forward": "→", "menu": "≡", "more": "⋯", "grid": "⌗", "list": "☰",
-	"lock": "⊠", "unlock": "⊡", "eye": "◉", "hidden": "◌", "link": "⇗",
+	"lock": "⚿", "unlock": "⚷", "eye": "◉", "hidden": "◌", "link": "⇗",
 	"mail": "✉", "phone": "☎", "chat": "❝", "send": "➤", "pin": "⌖",
 	"filter": "⚟", "sort": "⇅", "chart": "◫", "terminal": "▌", "code": "⌘",
 	"wifi": "≋", "battery": "▰", "power": "⏻", "cloud": "☁", "key": "⚿",

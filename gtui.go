@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -212,7 +214,18 @@ func (a *App) resetOverlays() {
 	a.beforeModal = nil
 }
 
+// Render opens the terminal and runs until the app stops.
+//
+// With GTUI_SNAPSHOT set to a size, say 100x30, it prints one frame as plain
+// text and returns instead of opening the terminal. That is how an app is
+// previewed from a script, kept in a README, or looked at on a machine with no
+// terminal to open.
 func (a *App) Render() error {
+	if width, height, ok := snapshotSize(); ok {
+		fmt.Println(a.Snapshot(width, height))
+		return a.err
+	}
+
 	defer a.Stop()
 
 	options := term.DefaultOptions()
@@ -275,6 +288,31 @@ func (a *App) RenderTo(w io.Writer, width, height int) error {
 	a.frame()
 
 	return a.err
+}
+
+// snapshotSize reads GTUI_SNAPSHOT, which is a size like 100x30.
+func snapshotSize() (int, int, bool) {
+	size := os.Getenv("GTUI_SNAPSHOT")
+	if size == "" {
+		return 0, 0, false
+	}
+
+	cut := strings.IndexAny(size, "xX*")
+	if cut <= 0 {
+		return 0, 0, false
+	}
+
+	width, err := strconv.Atoi(strings.TrimSpace(size[:cut]))
+	if err != nil || width < 1 {
+		return 0, 0, false
+	}
+
+	height, err := strconv.Atoi(strings.TrimSpace(size[cut+1:]))
+	if err != nil || height < 1 {
+		return 0, 0, false
+	}
+
+	return width, height, true
 }
 
 // resize tells the document how much room it has, then rebuilds a registered

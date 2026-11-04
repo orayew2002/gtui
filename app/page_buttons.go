@@ -4,18 +4,7 @@ import "github.com/orayew2002/gtui"
 
 func pageButtons() gtui.Component {
 	return gtui.Column("grow gap-1",
-		gtui.Navbar("",
-			gtui.IconText("text-accent bold", "terminal", "gtui"),
-			gtui.IconButton("text-muted hover:text-ink", "search", "", func(e *gtui.Event) {
-				openPalette()
-			}),
-			gtui.IconButton("text-muted hover:text-ink", "bell", "", func(e *gtui.Event) {
-				app.Toast("info", "nothing new")
-			}),
-			gtui.Kbd("", "ctrl+p"),
-		),
-		card("a", "button variants",
-			note("one look per button, written only with classes"),
+		demo("a", "button variants", "one look per button, written only with classes",
 			gtui.Row("gap-x-2 gap-y-1 items-center flex-wrap",
 				gtui.Button("pill bg-accent text-canvas border-accent", "primary", func(e *gtui.Event) {
 					say("btn-out", "primary clicked")

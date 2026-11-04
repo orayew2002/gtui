@@ -67,13 +67,13 @@ func code() []gtui.Component {
 	}
 
 	body := []gtui.Component{}
-	if wideScreen() {
+	if wide() {
 		lines = append(lines, `})`)
 		body = append(body, note("the tick redraws one box, not the page, so focus stays put"))
 	}
 
 	body = append(body, gtui.CodeView(gtui.CodeOptions{Lines: lines, First: 1}))
-	if wideScreen() {
+	if wide() {
 		body = append(body, gtui.Hint("", "app.Every", "slower timers, app.After for one shot"))
 	}
 
@@ -117,40 +117,4 @@ func spinnerRow() []gtui.Component {
 			gtui.Text("text-muted nowrap", "working"),
 		),
 	}
-}
-
-// room reports the cells a page has inside #main: the shell spends the rest on
-// the sidebar, the header, the gaps and the borders, and the sidebar itself is
-// narrower on a small terminal.
-func room() (int, int) {
-	width, height := app.Size()
-
-	cols := width - 23
-	if compact() {
-		cols = width - 10
-	}
-	if cols < 24 {
-		cols = 24
-	}
-
-	rows := height - 9
-	if rows < 8 {
-		rows = 8
-	}
-
-	return cols, rows
-}
-
-func wideScreen() bool {
-	width, _ := room()
-	return width >= 80
-}
-
-// demo is card() with a line of explanation that only a terminal with rows to
-// spare has to give up.
-func demo(key, title, about string, body ...gtui.Component) gtui.Component {
-	if about != "" && wideScreen() {
-		body = append([]gtui.Component{note(about)}, body...)
-	}
-	return card(key, title, body...)
 }

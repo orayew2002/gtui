@@ -11,7 +11,7 @@ func pageLayout() gtui.Component {
 
 	// the scroll and centre boxes take the rows the two rows of cards leave
 	deep := height - 9
-	if wideScreen() {
+	if wide() {
 		deep = height - 16
 	}
 	deep = min(max(deep, 3), 12)
@@ -72,7 +72,7 @@ func pageLayout() gtui.Component {
 
 func tiles() []gtui.Component {
 	class := "bg-raised px-1"
-	if wideScreen() {
+	if wide() {
 		class = "rounded border-line bg-panel px-1"
 	}
 

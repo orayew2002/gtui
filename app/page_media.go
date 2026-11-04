@@ -3,16 +3,6 @@ package main
 import (
 	"fmt"
 	"image"
-	"image/color"
-	"image/color/palette"
-	"image/draw"
-	"image/gif"
-	"image/png"
-	"math"
-	"os"
-	"path/filepath"
-	"strconv"
-	"sync"
 
 	"github.com/orayew2002/gtui"
 )
@@ -30,142 +20,11 @@ var (
 	queue   = []string{"Nocturne in E flat", "Gymnopédie no 1", "Clair de lune"}
 )
 
-// picture paints a sample image so the gallery ships no binary files. It is
-// twice as wide as it is tall, the shape a terminal draws best.
-func picture(seed int) image.Image {
-	const size = 96
-	img := image.NewRGBA(image.Rect(0, 0, size*2, size))
-
-	for y := range size {
-		for x := range size * 2 {
-			wave := math.Sin(float64(x+seed*20)/9) * math.Cos(float64(y)/11)
-			img.Set(x, y, color.RGBA{
-				R: uint8(90 + 70*wave),
-				G: uint8(70 + 120*float64(y)/size),
-				B: uint8(150 + 80*math.Sin(float64(y+seed*25)/13)),
-				A: 255,
-			})
-		}
-	}
-
-	return img
-}
-
-// clip builds a short animation in memory. OpenClip("file.gif") does the same
-// from a real file.
-func clip() *gtui.Clip {
-	frames := make([]image.Image, 0, 8)
-
-	for step := range 8 {
-		img := image.NewRGBA(image.Rect(0, 0, 64, 32))
-		for y := range 32 {
-			for x := range 64 {
-				v := math.Sin(float64(x)/6 + float64(step)/1.2)
-				img.Set(x, y, color.RGBA{
-					R: uint8(40 + 60*v),
-					G: uint8(120 + 90*math.Sin(float64(y)/5+float64(step)/2)),
-					B: uint8(200 - 40*v),
-					A: 255,
-				})
-			}
-		}
-		frames = append(frames, img)
-	}
-
-	return &gtui.Clip{Name: "sample.gif", Frames: frames, Delays: []int{8}}
-}
-
-var samples struct {
-	once  sync.Once
-	paths []string
-	reel  string
-}
-
-// samplePaths writes the sample pictures once, because Viewer, Backdrop and Fit
-// read files: pointing them at a photo folder is the real use.
-func samplePaths() []string {
-	samples.once.Do(func() {
-		dir, err := os.MkdirTemp("", "gtui-gallery")
-		if err != nil {
-			return
-		}
-
-		for i, img := range gallery {
-			path := filepath.Join(dir, "picture-"+strconv.Itoa(i+1)+".png")
-
-			file, err := os.Create(path)
-			if err != nil {
-				return
-			}
-
-			err = png.Encode(file, img)
-			file.Close()
-
-			if err != nil {
-				return
-			}
-			samples.paths = append(samples.paths, path)
-		}
-
-		samples.reel = writeReel(dir)
-	})
-
-	return samples.paths
-}
-
-// writeReel saves the in-memory clip as a real gif, so the gallery can show
-// OpenClip reading one back without shipping a binary file.
-func writeReel(dir string) string {
-	path := filepath.Join(dir, "sample.gif")
-
-	file, err := os.Create(path)
-	if err != nil {
-		return ""
-	}
-	defer file.Close()
-
-	frames := make([]*image.Paletted, 0, len(reel.Frames))
-	delays := make([]int, 0, len(reel.Frames))
-
-	for _, frame := range reel.Frames {
-		bounds := frame.Bounds()
-		shot := image.NewPaletted(bounds, palette.Plan9)
-		draw.Draw(shot, bounds, frame, bounds.Min, draw.Src)
-
-		frames = append(frames, shot)
-		delays = append(delays, 8)
-	}
-
-	if err := gif.EncodeAll(file, &gif.GIF{Image: frames, Delay: delays}); err != nil {
-		return ""
-	}
-
-	return path
-}
-
-// openedReel loads the gif from disk once, the way an app with real media does.
-func openedReel() *gtui.Clip {
-	loaded.once.Do(func() {
-		samplePaths()
-		if samples.reel == "" {
-			return
-		}
-		loaded.clip, _ = gtui.OpenClip(samples.reel)
-	})
-
-	return loaded.clip
-}
-
-var loaded struct {
-	once sync.Once
-	clip *gtui.Clip
-}
-
 func pageMedia() gtui.Component {
 	// on a small terminal the three players share one row, which leaves each
 	// of them enough rows for a picture worth looking at. The thirds are
 	// explicit, so a long title cannot take a picture's cells away.
-	if !wideScreen() {
+	if !wide() {
 		third := fmt.Sprintf("w-%d col clip shrink-0", mediaThird())
 
 		return gtui.Row("gap-1 grow",
@@ -275,7 +134,7 @@ func pictureCard() gtui.Component {
 		}),
 	}
 
-	if wideScreen() {
+	if wide() {
 		body = append(body, out("mv-out", "Viewer draws every picture with Fit, so the ratio survives"))
 	}
 
@@ -284,7 +143,7 @@ func pictureCard() gtui.Component {
 
 func videoCard() gtui.Component {
 	body := []gtui.Component{gtui.Column("gap-0 #mv-frame", videoFrame()...)}
-	if wideScreen() {
+	if wide() {
 		body = append(body, note("key b puts the keyboard on the player"))
 	}
 
@@ -298,7 +157,7 @@ func videoFrame() []gtui.Component {
 
 	frame := "rounded border-line"
 	chrome := "#mv-player"
-	if !wideScreen() {
+	if !wide() {
 		frame, chrome = "", "rounded-none #mv-player"
 	}
 
@@ -327,7 +186,7 @@ func videoFrame() []gtui.Component {
 func musicCard() gtui.Component {
 	width, _ := room()
 
-	if !wideScreen() {
+	if !wide() {
 		return card("d", "music player",
 			gtui.Row("gap-1 items-center",
 				gtui.Icon("text-accent", "music"),
@@ -406,7 +265,7 @@ func tracks() []string {
 func pictureSize() (int, int) {
 	width, height := room()
 
-	if !wideScreen() {
+	if !wide() {
 		// the card spends six cells on its frame, the viewer four more
 		return mediaThird() - 10, min(max((height-7)/2, 3), 6)
 	}

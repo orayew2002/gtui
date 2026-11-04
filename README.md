@@ -256,6 +256,7 @@ gtui.Backdrop("rounded", "cover.jpg", 40, 10,              // picture behind con
 )
 
 gtui.Viewer(gtui.ViewerOptions{Paths: shots, Index: at, Width: 40, Height: 12, Zoom: 2})
+gtui.Viewer(gtui.ViewerOptions{Images: drawn, Index: at, Width: 40, Height: 12})  // already in memory
 ```
 
 A width and height of zero means *fill the box*, the way a background picture does: the canvas adds
@@ -333,21 +334,39 @@ The diffing writer means a moving UI still sends only the cells that changed.
 
 ## Examples
 
+Thirteen small apps, between them using every component the framework draws.
+
 ```sh
 go run ./app                   # the component gallery — one page per group
 go run ./app check             # drive the gallery and report pass/fail per component
 go run ./app audit             # poke every page with the mouse and the keyboard
+
 go run ./examples/hello        # one centered card
+go run ./examples/admin        # records, row actions, dialogs that ask first
+go run ./examples/files        # a tree, a thousand-row list, split panes
+go run ./examples/monitor      # charts, gauges, a timeline, everything moving
+go run ./examples/settings     # every field and picker, saved in one call
+go run ./examples/studio       # a picture behind the content, both players
+go run ./examples/shop         # three languages, a hand built table, real files
 go run ./examples/dashboard    # stat cards, charts, a compact table
 go run ./examples/form         # inputs, selector, range, switch, toasts
-go run ./examples/browser      # tab bar, address bar, page, status bar
+go run ./examples/browser      # tabs and links that swap one box
 go run ./examples/player       # media player with seek, volume, queue
 go run ./examples/editor       # file tree, code view with gutter, status bar
 go run ./examples/chat         # assistant thread with a prompt box
 ```
 
+Any of them prints a frame instead of opening the terminal when asked, which is
+how a screen ends up in a README or in a test:
+
+```sh
+GTUI_SNAPSHOT=100x30 go run ./examples/admin
+```
+
 `app/` is a **gallery**: every page holds live, clickable examples of one component group, so you
-can try each one by hand. Press the letter in a box's border to jump into it, then `enter`.
+can try each one by hand. Press the letter in a card's border to jump into it, then `enter`. The
+shell is one bar across the top, a column of links down the left and the page itself, each
+separated by a single rule, so the only boxes on screen are the demos.
 
 | page | what you can click |
 | --- | --- |
@@ -372,10 +391,11 @@ The gallery is also the reference for laying out a real app:
 
 ```
 app/main.go          wiring: theme, languages, routes, run
+app/ui.go            every helper a page uses: card, demo, note, out, say, room
+app/shell.go         the top bar, the sidebar and the page pane
 app/routes.go        the page table and the command palette
-app/shell.go         sidebar, header, theme switch
-app/demo.go          tiny helpers used by every page
 app/page_*.go        one file per page
+app/samples.go       the pictures the media page draws, so no binaries ship
 app/locales/*.json   the gallery's own translations
 app/check.go         the self check behind `go run ./app check`
 app/audit.go         the interaction audit behind `go run ./app audit`
@@ -413,6 +433,7 @@ app.Click(x, y) / app.Hover(x, y) / app.Wheel(x, y, lines)   // and the pointer
 app.UseMouse(on) / app.UseCursor(on)             // mouse capture and the real caret
 app.Render()                    // open the terminal and run
 app.Snapshot(w, h)              // render to plain text
+                                // GTUI_SNAPSHOT=100x30 makes Render do that instead
 ```
 
 ## Requirements

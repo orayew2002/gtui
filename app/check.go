@@ -42,14 +42,25 @@ func check() bool {
 
 	run("jump badges", func() {
 		start("inputs")
+
+		// a card wears its key in its border; the sidebar and the page pane
+		// carry theirs with key-hide, because a single rule has nowhere to
+		// print a badge
 		expect("┤a├")
-		expect("┤c├")
+		expect("┤b├")
 
 		press("a")
 		changed()
 
 		if app.Focused() == nil {
 			fail("the a badge moved focus nowhere")
+		}
+
+		for _, key := range []string{"n", "c"} {
+			press(key)
+			if app.Focused() == nil {
+				fail("the hidden %s key moved focus nowhere", key)
+			}
 		}
 	})
 
@@ -520,7 +531,7 @@ func check() bool {
 			press(item.Key)
 			changed()
 
-			expectOut("head", item.Title)
+			expectOut("head", phrase("nav."+item.Title, item.Title))
 			if body := nodeText("#main"); body == "" {
 				fail("#main is empty")
 			}
@@ -721,28 +732,39 @@ func fits(item page, width, height int) {
 	}
 
 	for y, line := range lines {
-		if w := render.StringWidth(line); w > width-1 {
+		if w := render.StringWidth(line); w > width {
 			fail("%dx%d: row %d is %d cells wide: %q", width, height, y, w, line)
 			return
 		}
 	}
 
-	edge := width - 2
-	for y := 1; y < height-1; y++ {
-		if r := cellAt(lines[y], edge); r != ' ' && !strings.ContainsRune(borderRunes, r) {
-			fail("%dx%d: row %d spills %q into the frame column", width, height, y, r)
+	// the rule beside the sidebar holds its column on every row of the body,
+	// which it only manages while nothing is spilling into it
+	rule := sidebarRule(lines)
+	if rule < 0 {
+		fail("%dx%d: no rule between the sidebar and the page", width, height)
+		return
+	}
+
+	for y := 2; y < height; y++ {
+		if r := cellAt(lines[y], rule); r != '│' && r != ' ' {
+			fail("%dx%d: row %d puts %q where the sidebar rule belongs", width, height, y, r)
 			return
 		}
 	}
+}
 
-	if r := cellAt(lines[1], edge); r != '╮' {
-		fail("%dx%d: the header has no right corner, column %d of row 1 is %q", width, height, edge, r)
-		return
+// sidebarRule is the column the sidebar's right rule sits in. The sidebar is
+// the leftmost box, so the first rule on a body row is its own.
+func sidebarRule(lines []string) int {
+	for y := 2; y < len(lines); y++ {
+		for x := range 20 {
+			if cellAt(lines[y], x) == '│' {
+				return x
+			}
+		}
 	}
-	if r := cellAt(lines[height-2], edge); r != '╯' {
-		fail("%dx%d: the content pane has no right corner, column %d of row %d is %q",
-			width, height, edge, height-2, r)
-	}
+	return -1
 }
 
 const borderRunes = "╭╮╰╯│─┤├"

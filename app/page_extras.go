@@ -112,7 +112,7 @@ func noticeExtras() []gtui.Component {
 		}),
 	)
 
-	if !wideScreen() {
+	if !wide() {
 		return []gtui.Component{banner, gtui.EmptyState("", "files", "EmptyState", "")}
 	}
 
