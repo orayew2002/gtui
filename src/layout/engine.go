@@ -462,14 +462,23 @@ func marginMain(c *Box, horizontal bool) int {
 }
 
 func minMain(c *Box, horizontal bool) int {
+	// a size written in cells is a floor, whatever the box does with its
+	// overflow: h-5 means five rows, and clip or scroll only says what to do
+	// with the content that does not fit, not that the box may vanish. A box
+	// that should give way says so with shrink.
+	if horizontal {
+		if w, ok := c.Style.Width.Resolve(-1); ok {
+			return w
+		}
+	} else if h, ok := c.Style.Height.Resolve(-1); ok {
+		return h
+	}
+
 	if c.Style.Overflow != style.OverflowVisible {
 		return 0
 	}
 
 	if horizontal {
-		if w, ok := c.Style.Width.Resolve(-1); ok {
-			return w
-		}
 		return minContentWidth(c) + childInsets(c)
 	}
 
@@ -483,11 +492,11 @@ func minContentHeight(b *Box) int {
 	if b.Node.Canvas != nil {
 		return b.ContentH
 	}
-	if b.Style.Overflow != style.OverflowVisible {
-		return 0
-	}
 	if h, ok := b.Style.Height.Resolve(-1); ok {
 		return h
+	}
+	if b.Style.Overflow != style.OverflowVisible {
+		return 0
 	}
 
 	flow := flowChildren(b)

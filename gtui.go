@@ -33,6 +33,7 @@ type App struct {
 	terminal *term.Terminal
 	screen   *render.Screen
 	tree     *layout.Box
+	stale    bool
 	diags    []style.Diagnostic
 
 	focus *dom.Node
@@ -440,6 +441,34 @@ func (a *App) Type(text string) *App {
 	return a
 }
 
+// Click presses and releases the mouse on one cell, the way Press sends one
+// key: the cell is hit tested, focus moves to the control under it and the
+// click is dispatched from there. It is how a test drives the pointer.
+func (a *App) Click(x, y int) *App {
+	a.handleMouse(term.Mouse{Kind: term.MousePress, X: x, Y: y})
+	a.handleMouse(term.Mouse{Kind: term.MouseRelease, X: x, Y: y})
+	return a
+}
+
+// Hover moves the pointer without pressing, so hover: classes light up.
+func (a *App) Hover(x, y int) *App {
+	a.handleMouse(term.Mouse{Kind: term.MouseMove, X: x, Y: y})
+	return a
+}
+
+// Wheel scrolls at a cell. A negative count scrolls up, a positive one down.
+func (a *App) Wheel(x, y, lines int) *App {
+	kind := term.MouseWheelDown
+	if lines < 0 {
+		kind, lines = term.MouseWheelUp, -lines
+	}
+
+	for range lines {
+		a.handleMouse(term.Mouse{Kind: kind, X: x, Y: y})
+	}
+	return a
+}
+
 // pressKey names control characters the way the terminal decoder does, so
 // Type("a\nb") inserts a newline instead of typing an unknown key.
 func pressKey(key string) term.Key {
@@ -481,11 +510,35 @@ func (a *App) QuitOn(keys ...string) *App {
 }
 
 func (a *App) Redraw() *App {
+	// whatever asked for a redraw has changed the document, so the boxes the
+	// last layout produced no longer describe it
+	a.stale = true
+
 	select {
 	case a.redrawCh <- struct{}{}:
 	default:
 	}
 	return a
+}
+
+// boxes is the box tree, laid out again first if the document moved on since
+// the last frame. Input arrives in bursts and the whole burst is handled before
+// the next frame, so without this a second click in one burst would be matched
+// against boxes the first click already threw away.
+func (a *App) boxes() *layout.Box {
+	if !a.stale {
+		return a.tree
+	}
+
+	width, height := a.viewW, a.viewH
+	if a.screen != nil {
+		width, height = a.screen.Size()
+	}
+	if width <= 0 || height <= 0 {
+		return a.tree
+	}
+
+	return a.layout(width, height)
 }
 
 // Do queues fn for the next Render loop pass, Snapshot, RenderTo or Flush. It
@@ -622,6 +675,7 @@ func (a *App) build(width, height int) *layout.Box {
 
 	layout.Layout(tree, render.Rect{W: width, H: height})
 	a.tree = tree
+	a.stale = false
 
 	return tree
 }

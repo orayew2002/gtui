@@ -170,6 +170,14 @@ Every control answers the keyboard alone: text fields edit in place and scroll t
 caret, `Select`, `Selector` and `Autocomplete` open and walk their lists with the arrows, `Range`
 and `Calendar` move with the arrows, and a picker closes itself when focus leaves it.
 
+A dialog takes the whole terminal while it is open: `tab` cannot leave it, a jump key cannot pull
+the keyboard behind it, and a click beside it does not reach the page it covers. `esc` closes it.
+
+`go run ./app audit` presses the mouse on every cell of every page, hovers everywhere, turns the
+wheel, and walks the keyboard through every stop — checking after each event that focus still
+points at something real and on screen, that no line overflows the terminal, and that whatever a
+click opened `esc` can close.
+
 ## Forms and dialogs
 
 ```go
@@ -290,6 +298,7 @@ The diffing writer means a moving UI still sends only the cells that changed.
 ```sh
 go run ./app                   # the component gallery — one page per group
 go run ./app check             # drive the gallery and report pass/fail per component
+go run ./app audit             # poke every page with the mouse and the keyboard
 go run ./examples/hello        # one centered card
 go run ./examples/dashboard    # stat cards, charts, a compact table
 go run ./examples/form         # inputs, selector, range, switch, toasts
@@ -331,6 +340,7 @@ app/demo.go          tiny helpers used by every page
 app/page_*.go        one file per page
 app/locales/*.json   the gallery's own translations
 app/check.go         the self check behind `go run ./app check`
+app/audit.go         the interaction audit behind `go run ./app audit`
 ```
 
 Adding a page is one file plus one line in `routes.go`.
@@ -359,7 +369,8 @@ app.Focus(node) / app.Focused() / app.Select(sel) / app.Bind(key, fn) / app.Quit
 app.Theme(t) / app.ToggleTheme() / app.ThemeByName(n) / app.Tokens(edit) / app.Language(code)
 app.Animate(fps, fn) / app.Every(d, fn) / app.After(d, fn) / app.Do(fn)
 app.Size() / app.OnResize(fn) / app.Copy(text)   // viewport, resize, clipboard
-app.Press(key) / app.Type(text) / app.Flush()    // drive the UI from code or tests
+app.Press(key) / app.Type(text) / app.Flush()    // drive the keyboard from code
+app.Click(x, y) / app.Hover(x, y) / app.Wheel(x, y, lines)   // and the pointer
 app.UseMouse(on) / app.UseCursor(on)             // mouse capture and the real caret
 app.Render()                    // open the terminal and run
 app.Snapshot(w, h)              // render to plain text

@@ -38,6 +38,9 @@ func (a *App) Modal(title string, body ...Component) *App {
 	}
 	a.modalOpen = true
 
+	// whatever the pointer was over is now behind the panel
+	a.setHover(nil)
+
 	first := firstFocusableNode(layer)
 	if first == nil {
 		node.AddClass("focusable")

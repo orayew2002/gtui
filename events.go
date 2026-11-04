@@ -139,12 +139,13 @@ func descends(n, root *dom.Node) bool {
 }
 
 func (a *App) jumpTo(key string) bool {
-	if key == "" || a.tree == nil {
+	tree := a.boxes()
+	if key == "" || tree == nil {
 		return false
 	}
 
 	var target *layout.Box
-	a.tree.Walk(func(b *layout.Box) bool {
+	tree.Walk(func(b *layout.Box) bool {
 		if target != nil {
 			return false
 		}
@@ -381,6 +382,14 @@ func (a *App) clampScroll(box *layout.Box) {
 func (a *App) handleMouse(m term.Mouse) {
 	hit := a.hitBox(m.X, m.Y)
 
+	// a dialog covers the page, so the pointer stops at it the way the
+	// keyboard does: a click beside an open dialog must not reach the button
+	// it hides, and the wheel must not scroll the page behind it
+	if layer := a.modalLayer(); layer != nil && !descends(nodeOf(hit), layer) {
+		a.setHover(nil)
+		return
+	}
+
 	switch m.Kind {
 	case term.MouseMove:
 		a.setHover(nodeOf(hit))
@@ -461,19 +470,21 @@ func nodeOf(b *layout.Box) *dom.Node {
 }
 
 func (a *App) hitBox(x, y int) *layout.Box {
-	if a.tree == nil {
+	tree := a.boxes()
+	if tree == nil {
 		return nil
 	}
-	return a.tree.HitTest(x, y)
+	return tree.HitTest(x, y)
 }
 
 func (a *App) findBox(node *dom.Node) *layout.Box {
-	if node == nil || a.tree == nil {
+	tree := a.boxes()
+	if node == nil || tree == nil {
 		return nil
 	}
 
 	var found *layout.Box
-	a.tree.Walk(func(b *layout.Box) bool {
+	tree.Walk(func(b *layout.Box) bool {
 		if found != nil {
 			return false
 		}
@@ -516,12 +527,13 @@ func (a *App) scrollableAncestor(b *layout.Box) *layout.Box {
 }
 
 func (a *App) firstScrollable() *layout.Box {
-	if a.tree == nil {
+	tree := a.boxes()
+	if tree == nil {
 		return nil
 	}
 
 	var found *layout.Box
-	a.tree.Walk(func(b *layout.Box) bool {
+	tree.Walk(func(b *layout.Box) bool {
 		if found != nil {
 			return false
 		}
@@ -567,12 +579,13 @@ func (a *App) focusVisible() bool {
 }
 
 func (a *App) focusables() []*dom.Node {
-	if a.tree == nil {
+	tree := a.boxes()
+	if tree == nil {
 		return nil
 	}
 
 	var out []*dom.Node
-	a.tree.Walk(func(b *layout.Box) bool {
+	tree.Walk(func(b *layout.Box) bool {
 		if b.Node != nil && b.Style.Focusable {
 			out = append(out, b.Node)
 		}
@@ -646,12 +659,13 @@ func focusablesIn(section *layout.Box) []*dom.Node {
 }
 
 func (a *App) links() []*dom.Node {
-	if a.tree == nil {
+	tree := a.boxes()
+	if tree == nil {
 		return nil
 	}
 
 	var out []*dom.Node
-	a.tree.Walk(func(b *layout.Box) bool {
+	tree.Walk(func(b *layout.Box) bool {
 		if b.Node != nil && b.Style.Focusable && b.Style.Overflow != style.OverflowScroll {
 			out = append(out, b.Node)
 		}

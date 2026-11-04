@@ -26,6 +26,9 @@ func main() {
 	if check() {
 		return
 	}
+	if audit() {
+		return
+	}
 	if snapshot() {
 		return
 	}

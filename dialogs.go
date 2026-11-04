@@ -12,6 +12,7 @@ const (
 	dialogOKID     = "gtui-dialog-ok"
 	promptInputID  = "gtui-prompt-input"
 	chooseID       = "gtui-choose"
+	chooseFirstID  = "gtui-choose-first"
 	busyGlyphID    = "gtui-busy-glyph"
 	busyGlyphSel   = "#" + busyGlyphID
 	busyFramesPerS = 10
@@ -76,30 +77,82 @@ func (a *App) Prompt(title, label, placeholder string, onSubmit func(value strin
 	return a
 }
 
+// Choose asks for one of a handful of options. The options are rows rather than
+// a dropdown: a dropdown inside a dialog would take the first esc to fold
+// itself away, leaving a dialog with nothing in it, and the person pressing esc
+// means cancel.
 func (a *App) Choose(title string, options []string, onPick func(string)) *App {
 	if len(options) == 0 {
 		return a
 	}
 
-	a.Modal(title, Selector("w-full #"+chooseID, "choose", "filter", options...))
+	rows := make([]Component, 0, len(options))
+	for i, option := range options {
+		pick := option
 
-	if node := a.Query("#" + chooseID); node != nil {
-		// a chooser that arrives collapsed hides the very thing it was opened
-		// to show, so unfold it the way a click would
-		node.Dispatch(&Event{Type: "click", Target: node})
-
-		node.On("change", func(e *Event) {
-			picked := e.Value
+		rows = append(rows, Clickable(chooseRowClass(i), func(e *Event) {
+			e.StopPropagation()
 
 			a.CloseModal()
 			if onPick != nil {
-				onPick(picked)
+				onPick(pick)
 			}
 			a.Redraw()
-		})
+		}, Text("grow nowrap", option)))
 	}
 
+	a.Modal(title, Div("col gap-0 #"+chooseID, rows...))
+
+	a.walkChooseRows(func(index int, row *Node) {
+		row.On("keydown", func(e *Event) {
+			switch e.Key {
+			case "down":
+				e.StopPropagation()
+				a.stepChoose(index + 1)
+			case "up":
+				e.StopPropagation()
+				a.stepChoose(index - 1)
+			}
+		})
+	})
+
 	return a
+}
+
+func chooseRowClass(index int) string {
+	class := "row gap-1 px-1 focusable hover:bg-raised focus:bg-raised focus:bold"
+	if index == 0 {
+		class += " #" + chooseFirstID
+	}
+	return class
+}
+
+// walkChooseRows hands every option row to fn, in the order they were added.
+func (a *App) walkChooseRows(fn func(index int, row *Node)) {
+	list := a.Query("#" + chooseID)
+	if list == nil {
+		return
+	}
+
+	index := 0
+	for _, row := range list.ElementChildren() {
+		fn(index, row)
+		index++
+	}
+}
+
+// stepChoose moves the keyboard between option rows, so the arrows work the way
+// they do in a list.
+func (a *App) stepChoose(to int) {
+	var rows []*Node
+	a.walkChooseRows(func(_ int, row *Node) { rows = append(rows, row) })
+
+	if len(rows) == 0 {
+		return
+	}
+
+	a.Focus(rows[clampInt(to, 0, len(rows)-1)])
+	a.Redraw()
 }
 
 // Busy shows a spinning modal and returns the func that stops it. The closer is
