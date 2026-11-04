@@ -1,3 +1,5 @@
+// Pictures and players. A canvas box paints two pixels per cell, and lays its
+// children out on top, which is what makes a picture usable as a background.
 package main
 
 import (

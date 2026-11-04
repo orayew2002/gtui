@@ -156,6 +156,12 @@ func (b *Buffer) Blend(r Rect, bg colors.Color, alpha uint8) {
 			}
 
 			cell.Bg, cell.HasBg = Mix(under, bg, alpha), true
+
+			// a cell already carrying a glyph has part of the picture in its
+			// foreground, so the scrim has to reach that too
+			if cell.HasFg {
+				cell.Fg = Mix(cell.Fg, bg, alpha)
+			}
 		}
 	}
 }

@@ -1,3 +1,5 @@
+// Tables. DataTable does the work for a slice of records; Table, TableHead and
+// TableRow are there for when the rows are built by hand.
 package main
 
 import "github.com/orayew2002/gtui"
@@ -9,6 +11,8 @@ var people = [][]string{
 	{"Edsger Dijkstra", "professor", "failed"},
 }
 
+// pageTables builds the rows first, because DataTable takes them as data and
+// draws the chrome itself.
 func pageTables() gtui.Component {
 	rows := make([][]gtui.Component, 0, len(people))
 
@@ -88,6 +92,8 @@ func pageTables() gtui.Component {
 	)
 }
 
+// handCols is shared by the hand built table and its two loose rows, so the
+// columns line up between them.
 var handCols = []gtui.Col{
 	{Label: "pool", Width: "w-12"},
 	{Label: "disks", Width: "w-7", Right: true},

@@ -1,3 +1,5 @@
+// Languages. The gallery loads app/locales at startup, and this page shows the
+// keys, the arguments, the fallback, and a language added from code.
 package main
 
 import "github.com/orayew2002/gtui"
@@ -7,6 +9,8 @@ var shownKeys = []string{
 	"i18n.keys", "i18n.fallback", "msg.saved",
 }
 
+// pageI18n is built from T() calls, so switching the language rebuilds this
+// page in the new one with no other work.
 func pageI18n() gtui.Component {
 	rows := []gtui.Component{
 		card("a", phrase("i18n.title", "languages"),

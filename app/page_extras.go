@@ -1,7 +1,11 @@
+// The pieces an app is framed with: navbars, panels, windows, banners, empty
+// states, timelines, steps, metrics and the small marks that go beside them.
 package main
 
 import "github.com/orayew2002/gtui"
 
+// pageExtras is the catalogue page: it shows the framing pieces an app is built
+// from rather than the controls a user touches.
 func pageExtras() gtui.Component {
 	return card("a", "the rest of the kit",
 		gtui.TabView("grow #ex",

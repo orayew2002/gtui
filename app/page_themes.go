@@ -1,3 +1,6 @@
+// The theme tokens and the switches that belong to the whole app: the palette,
+// light and dark, and whether the caret, the mouse and the background are ours
+// or the terminal's.
 package main
 
 import (

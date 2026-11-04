@@ -1,7 +1,11 @@
+// Things that stack: trees, accordions, a scroll list that only builds the rows
+// it shows, key/value pairs, chips, a timeline and steps.
 package main
 
 import "github.com/orayew2002/gtui"
 
+// pageLists leans on cards() so the demos sit side by side on a wide screen and
+// stack on a narrow one.
 func pageLists() gtui.Component {
 	return gtui.Column("grow gap-1",
 		cards(

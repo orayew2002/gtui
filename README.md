@@ -334,7 +334,9 @@ The diffing writer means a moving UI still sends only the cells that changed.
 
 ## Examples
 
-Thirteen small apps, between them using every component the framework draws.
+Thirteen small apps, between them using every component the framework draws. Each one's screen is a
+single function in `demos/`, so the gallery can open the very same app on its projects page — run it
+on its own, or press `k` in the gallery and click it.
 
 ```sh
 go run ./app                   # the component gallery — one page per group
@@ -386,10 +388,12 @@ separated by a single rule, so the only boxes on screen are the demos.
 | `s` style | borders, radius, shadow, text transforms, truncation, every colour token, spacing, sizing, alignment, state variants |
 | `e` extras | navbar, panel, window, banner, empty state, timeline, steps, metrics, separators, loaders, scrollbox, columns, kbd, tags |
 | `v` views | chat thread, coloured logs, code view with a gutter, address bar, toolbar, breadcrumb, stepper, pagination, status bar |
+| `k` projects | the thirteen example apps — click one and it opens right there, in the page |
 
 The gallery is also the reference for laying out a real app:
 
 ```
+demos/               one function per example app, shared by examples/ and the gallery
 app/main.go          wiring: theme, languages, routes, run
 app/ui.go            every helper a page uses: card, demo, note, out, say, room
 app/shell.go         the top bar, the sidebar and the page pane
@@ -397,9 +401,13 @@ app/routes.go        the page table and the command palette
 app/page_*.go        one file per page
 app/samples.go       the pictures the media page draws, so no binaries ship
 app/locales/*.json   the gallery's own translations
+app/page_projects.go the page that opens an app from demos/ inside the gallery
 app/check.go         the self check behind `go run ./app check`
 app/audit.go         the interaction audit behind `go run ./app audit`
 ```
+
+Every file in `app/` opens with a line saying what it is for, and each page says what it is
+demonstrating, because the gallery is the thing a newcomer reads first.
 
 Adding a page is one file plus one line in `routes.go`.
 

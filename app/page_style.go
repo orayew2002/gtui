@@ -1,7 +1,11 @@
+// The class vocabulary as a cheat sheet, one tab per group, so a reader can see
+// what every class does without leaving the app.
 package main
 
 import "github.com/orayew2002/gtui"
 
+// pageStyle is a cheat sheet: one tab per group of classes, each tab showing
+// what the classes in it actually do.
 func pageStyle() gtui.Component {
 	return card("a", "every class a component takes",
 		gtui.TabView("grow #st",

@@ -1,7 +1,11 @@
+// Buttons, and the things that are buttons underneath: icon buttons, groups,
+// clickable rows, a dropdown, tabs, and the dialogs a button opens.
 package main
 
 import "github.com/orayew2002/gtui"
 
+// pageButtons shows that a button's whole look is its class: the same component
+// is a pill, a filled block or a bare word depending on what it is given.
 func pageButtons() gtui.Component {
 	return gtui.Column("grow gap-1",
 		demo("a", "button variants", "one look per button, written only with classes",

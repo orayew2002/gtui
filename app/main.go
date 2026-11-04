@@ -1,3 +1,6 @@
+// The gallery's entry point: build the app, load the languages, register the
+// view, and either run it in the terminal or answer one of the two modes the
+// scripts use, check and audit.
 package main
 
 import (

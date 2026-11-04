@@ -1,3 +1,5 @@
+// Everything that moves. One timer drives the whole gallery, and liveBoxes says
+// which small boxes it should redraw on the page that is open.
 package main
 
 import "github.com/orayew2002/gtui"
@@ -21,6 +23,13 @@ func liveBoxes() []liveBox {
 		return []liveBox{{"#mv-frame", videoFrame}, {"#mp-meter", musicMeter}}
 	case "feedback":
 		return []liveBox{{"#fb-spin", spinnerRow}}
+	case "projects":
+		// a project draws itself from the tick, so redraw the box it lives in
+		if project, ok := projectByKey(openProject); ok {
+			return []liveBox{{"#pj-open", func() []gtui.Component {
+				return []gtui.Component{project.Build(app, frame)}
+			}}}
+		}
 	}
 	return nil
 }

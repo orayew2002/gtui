@@ -1,3 +1,5 @@
+// The views a whole app is made of: a chat thread, coloured logs, code with a
+// gutter, an address bar and a status bar.
 package main
 
 import "github.com/orayew2002/gtui"
@@ -27,6 +29,7 @@ var codeLines = []string{
 	"}",
 }
 
+// pageViews shows the big views a whole app is made of, each one a single call.
 func pageViews() gtui.Component {
 	return gtui.Column("grow gap-1",
 		cards(

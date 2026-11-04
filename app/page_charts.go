@@ -1,3 +1,4 @@
+// Drawings made of cells: bars, a sparkline, a line chart, gauges and donuts.
 package main
 
 import (
@@ -16,6 +17,8 @@ func sine(n int) []float64 {
 	return out
 }
 
+// pageCharts sizes its drawings from the room the page has, so a chart never
+// pushes its card past the edge of the terminal.
 func pageCharts() gtui.Component {
 	bars, deep := chartSize()
 

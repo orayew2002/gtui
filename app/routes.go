@@ -1,3 +1,5 @@
+// The page table. Every page in the gallery is one entry here and one function
+// in its own file, and show() is where every way of navigating ends up.
 package main
 
 import (
@@ -33,6 +35,7 @@ func pages() []page {
 		{Key: "s", Title: "style", About: "the utility classes every component takes", Body: pageStyle},
 		{Key: "e", Title: "extras", About: "navbars, panels, windows, timelines and tags", Body: pageExtras},
 		{Key: "v", Title: "views", About: "chat, logs, code, address and status bars", Body: pageViews},
+		{Key: "k", Title: "projects", About: "the example apps, opened right here", Body: pageProjects},
 	}
 }
 

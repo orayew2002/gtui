@@ -1,3 +1,6 @@
+// The pictures the media page shows. They are painted here rather than shipped
+// as files, so the repo carries no binaries, and the ones that have to come off
+// disk are written to a temp directory the first time a page asks.
 package main
 
 import (

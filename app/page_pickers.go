@@ -1,3 +1,5 @@
+// The controls that open something to choose from: a filterable selector, an
+// autocomplete, a plain select, a range, radios and a calendar.
 package main
 
 import (
@@ -8,6 +10,8 @@ import (
 
 var disks = []string{"disk-01", "disk-02", "disk-03", "usb pool", "nas-01"}
 
+// pagePickers covers the controls that open something: each one reports what it
+// picked into a live line, so a click or a keystroke visibly does something.
 func pagePickers() gtui.Component {
 	return gtui.Column("grow gap-1",
 		cards(

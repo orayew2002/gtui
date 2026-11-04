@@ -1,3 +1,5 @@
+// Every kind of text field, the two switches, and the two ways to watch a field
+// change: a callback at build time, or app.OnInput by selector afterwards.
 package main
 
 import (
@@ -6,6 +8,8 @@ import (
 	"github.com/orayew2002/gtui"
 )
 
+// pageInputs shows both ways to watch a field: a callback passed at build time,
+// and app.OnInput attached by selector once the field is on screen.
 func pageInputs() gtui.Component {
 	// OnInput and OnChange attach by selector after the page is on screen,
 	// which is the alternative to wiring a callback at build time

@@ -1,3 +1,5 @@
+// All 198 icons, with a filter and a pager, plus one glyph registered by the
+// gallery itself to show the set is open.
 package main
 
 import (

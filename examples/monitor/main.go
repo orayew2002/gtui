@@ -1,119 +1,27 @@
-// A monitoring wall: numbers, charts and a log that all move on their own.
+// Charts, gauges and a log that all move on their own.
+//
+// The screen itself lives in demos/monitor.go, so the gallery can open the same
+// app on its projects page.
 package main
 
 import (
-	"math"
-
 	"github.com/orayew2002/gtui"
-)
-
-var (
-	app  = gtui.Init()
-	tick = 0
+	"github.com/orayew2002/gtui/demos"
 )
 
 func main() {
-	app.View(view)
-	app.QuitOn("q", "ctrl+c")
+	app := gtui.Init()
 
-	// one timer drives everything that moves, at a rate a terminal is happy
-	// with: the diffed writer only sends the cells that actually changed
+	// the project draws itself from the tick it is handed, so the timer that
+	// moves it belongs to whoever is hosting it
+	tick := 0
+
+	app.View(func() gtui.Component { return demos.Monitor(app, tick) })
 	app.Animate(8, func(at int) {
 		tick = at
 		app.Refresh()
 	})
 
+	app.QuitOn("q", "ctrl+c")
 	app.Render()
-}
-
-func view() gtui.Component {
-	return gtui.Column("full bg-canvas",
-		gtui.Row("px-1 items-center gap-2 border-b border-line",
-			gtui.IconText("text-accent bold nowrap", "chart", "monitor"),
-			gtui.Marquee("text-muted truncate", "four regions · 18 402 requests a minute · all green", 40, tick),
-			gtui.Spacer(),
-			gtui.Loader("text-accent nowrap", "live", tick),
-		),
-		gtui.Div("grow clip scroll px-1 py-1 gap-1 col",
-			gtui.Banner("", "warning", "disk 91% full", "the archive pool needs attention",
-				gtui.Button("pill border-warning text-warning", "clean up", func(e *gtui.Event) {
-					app.Toast("success", "4 GB freed")
-				}),
-			),
-			gtui.Grid("gap-1", 4,
-				gtui.Metric("", "requests", "18.4k", "+8%"),
-				gtui.Metric("", "errors", "12", "-3%"),
-				gtui.Metric("", "p95", "41ms", "flat"),
-				gtui.Metric("", "uptime", "99.98%", "+0.01"),
-			),
-			gtui.Row("gap-1",
-				gtui.Card("grow rounded border-line bg-panel px-1", "traffic",
-					gtui.Sparkline("text-success", wave(32, 0)),
-					gtui.LineChart("", wave(32, tick), 36, 6),
-				),
-				gtui.Card("w-30 shrink-0 rounded border-line bg-panel px-1", "by language",
-					gtui.BarChart("", []gtui.Bar{
-						{Label: "go", Value: 1284, Color: "text-accent"},
-						{Label: "rust", Value: 894, Color: "text-success"},
-						{Label: "zig", Value: 317, Color: "text-warning"},
-					}, 14),
-				),
-			),
-			gtui.Row("gap-1",
-				gtui.Card("grow rounded border-line bg-panel px-1", "pools",
-					gtui.Gauge("text-success", 8, 10, 18),
-					gtui.Gauge("text-warning", 9.1, 10, 18),
-					gtui.Progress("text-accent", float64(tick%20), 20, 18),
-					gtui.Row("gap-2 items-center pt-1",
-						gtui.Donut("text-accent", 3, 4),
-						gtui.Equalizer("text-success", 10, tick),
-						gtui.Dots("text-muted", tick),
-						gtui.Pulse("text-danger", 6, tick),
-						gtui.Wave("text-accent", 8, tick),
-					),
-				),
-				gtui.Card("w-34 shrink-0 rounded border-line bg-panel px-1", "rollout",
-					gtui.Steps("", 1,
-						gtui.StepItem{Title: "build", Note: "done"},
-						gtui.StepItem{Title: "canary", Note: "running"},
-						gtui.StepItem{Title: "all"},
-					),
-					gtui.Separator("", "history"),
-					gtui.Timeline("",
-						gtui.TimelineItem{Icon: "check", Kind: "ok", Title: "1.8.2 live", Time: "09:12"},
-						gtui.TimelineItem{Icon: "refresh", Kind: "busy", Title: "1.8.3 canary", Time: "09:40"},
-					),
-				),
-			),
-			gtui.Card("rounded border-line bg-panel px-1", "log",
-				gtui.Logs("", lines(), stamps()),
-			),
-		),
-		gtui.StatusBar("border-t border-line px-1",
-			[]gtui.Component{gtui.Row("gap-1", gtui.StatusDot("", "ok"), gtui.Text("nowrap", "all regions up"))},
-			[]gtui.Component{gtui.Text("nowrap text-muted dim", "q quits")},
-		),
-	)
-}
-
-// wave is a stand-in for a real series.
-func wave(n, at int) []float64 {
-	out := make([]float64, n)
-	for i := range out {
-		out[i] = 20 + 12*math.Sin(float64(i+at)/4)
-	}
-	return out
-}
-
-func lines() []string {
-	return []string{
-		"GET /disks 200 1.4ms",
-		"warn: disk-07 answered slowly",
-		"error: checksum failed on disk-07",
-		"GET /disks 200 1.1ms",
-	}
-}
-
-func stamps() []string {
-	return []string{"09:12:04", "09:12:09", "09:12:11", "09:12:18"}
 }

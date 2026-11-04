@@ -1,3 +1,6 @@
+// The self check. It drives the gallery through its own components and reports
+// pass or fail for each one, so "does this framework behave" is one command
+// away: go run ./app check
 package main
 
 import (

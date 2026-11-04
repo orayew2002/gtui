@@ -1,3 +1,5 @@
+// The layout primitives on their own: rows and columns, a grid that wraps, a
+// split, scrolling in both directions, centring, cards and target-swapping tabs.
 package main
 
 import (
@@ -6,6 +8,8 @@ import (
 	"github.com/orayew2002/gtui"
 )
 
+// pageLayout gives the scroll and centre boxes whatever rows the two rows of
+// cards leave over, so the page fills the screen without overflowing it.
 func pageLayout() gtui.Component {
 	_, height := room()
 

@@ -1,3 +1,7 @@
+// The interaction audit. Where check proves each component does its job, this
+// presses the mouse on every cell, hovers everywhere, turns the wheel and walks
+// the keyboard through every stop, asking after each event that the screen still
+// makes sense: go run ./app audit
 package main
 
 import (
