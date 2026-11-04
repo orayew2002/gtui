@@ -94,13 +94,15 @@ app.Refresh()                     // the whole view
 | | |
 | --- | --- |
 | structure | `Div` `Row` `Column` `Center` `Spacer` `Text` `Card` `Grid` `Split` `List` `ListItem` `Divider` `Toolbar` |
+| icons | `Icon` `IconText` `IconNames` — 70 named glyphs |
 | navigation | `Href` `Tabs` `Breadcrumb` `Pagination` `Dropdown` `MenuItem` `Tree` `Accordion` `Stepper` `app.Palette` |
 | data | `DataTable` (toolbar, zebra, selectable rows, `RowActions`, footer, pager) `Table` `Col` `Cells` `Badge` `Pill` `Toggle` `Avatar` `KeyValue` `StatCard` `Chips` `Rating` `ScrollList` |
-| forms | `Input` `Password` `Number` `Email` `URL` `Phone` `Date` `Search` `TextArea` `Checkbox` `Radios` `Select` `Selector` `Range` `Switch` `Calendar` `Button` |
+| forms | `Input` `Password` `Number` `Email` `URL` `Phone` `Date` `Search` `TextArea` `Checkbox` `Radios` `Select` `Selector` `Autocomplete` `Range` `Switch` `Calendar` `Button` |
 | feedback | `Alert` `Spinner` `Progress` `Gauge` `Skeleton` `Hint` `StatusBar` `app.Modal` `app.Toast` |
 | charts | `BarChart` `Sparkline` `LineChart` `Donut` `Gauge` |
-| views | `CodeView` `Chat` `Logs` `Player` `SeekBar` `AddressBar` `Image` `ImageFrom` `Video` |
-| motion | `Marquee` `Typewriter` `Blink` `Pulse` `Wave` `Dots` `app.Animate` `app.Every` `app.After` |
+| views | `CodeView` `Chat` `Logs` `Player` `SeekBar` `AddressBar` `Toolbar` |
+| media | `Image` `ImageFrom` `Backdrop` `BackdropFrom` `Viewer` `OpenClip` + `Clip.Frame` `Video` |
+| motion | `Marquee` `Typewriter` `Blink` `Pulse` `Wave` `Dots` `Equalizer` `app.Animate` `app.Every` `app.After` |
 
 ## Classes
 
@@ -127,6 +129,39 @@ app.Refresh()                     // the whole view
 | paste | arrives as one `paste` event and lands at the caret |
 | `esc` | close a modal |
 | `app.Bind("ctrl+p", fn)` | your own shortcut |
+
+## Pictures
+
+Images decode to half-block cells — two pixels per character — so a 40×12 box shows 40×24 pixels
+in truecolor.
+
+```go
+gtui.Image("rounded border-line", "poster.png", 40, 12)   // from a file
+gtui.ImageFrom("", rendered, 40, 12)                       // from an image.Image
+
+gtui.Backdrop("rounded", "cover.jpg", 40, 10,              // picture behind content
+	gtui.Column("px-1",
+		gtui.Text("bold text-canvas", "Garagum gijeleri"),
+		gtui.Text("text-canvas", "tk · 4k · 2.1 GB"),
+	),
+)
+
+gtui.Viewer(gtui.ViewerOptions{Paths: shots, Index: at, Width: 40, Height: 12, Zoom: 2})
+```
+
+Animated GIFs load as clips, with frames flattened so each one is a whole picture:
+
+```go
+clip, err := gtui.OpenClip("preview.gif")
+
+app.Every(clip.Delay(frame), func(tick int) {
+	frame++
+	app.Open("#screen", clip.Frame("", frame, 48, 14))
+})
+```
+
+Pair a clip (or any frame source) with `Player` for a full media view — title, clock, seek bar,
+volume and a queue.
 
 ## Themes
 
@@ -178,6 +213,8 @@ The diffing writer means a moving UI still sends only the cells that changed.
 ## Examples
 
 ```sh
+go run ./app                   # the component gallery — one page per group
+go run ./app check             # drive every component and report pass/fail
 go run ./examples/hello        # one centered card
 go run ./examples/dashboard    # stat cards, charts, a compact table
 go run ./examples/form         # inputs, selector, range, switch, toasts
@@ -185,37 +222,42 @@ go run ./examples/browser      # tab bar, address bar, page, status bar
 go run ./examples/player       # media player with seek, volume, queue
 go run ./examples/editor       # file tree, code view with gutter, status bar
 go run ./examples/chat         # assistant thread with a prompt box
-go run ./app                   # the full admin panel
 ```
 
-`app/` is a complete **admin panel** and the reference for structuring a real app:
+`app/` is a **gallery**: every page holds live, clickable examples of one component group, so you
+can try each one by hand. Press the letter in a box's border to jump into it, then `enter`.
 
-```
-app/main.go          wiring: languages, theme, routes, run
-app/routes.go        the route table and the command palette
-app/shell.go         sidebar, header, language and theme switches
-app/page_*.go        one file per page
-app/data.go          sample rows
-app/helpers.go       small local helpers
-```
-
-Adding a page is one file plus one line in `routes.go`. The panel covers the whole component set
-so you can try each one by hand:
-
-| page | components on it |
+| page | what you can click |
 | --- | --- |
-| home | `StatCard` `Card` `KeyValue` `Gauge` `Sparkline` `Divider` |
-| dynamic | `Progress` `Spinner` `Sparkline` `LineChart` `Wave` `Marquee` `Typewriter` `Pulse` `Dots` `Blink` `Range` `Switch` `Button` `app.Toast` |
-| movies · serials · books · songs · storages | `DataTable` `Pill` `Toggle` `Pagination` with translated columns |
-| editor | `Input` `Number` `Selector` `Range` `TextArea` `Radios` `Switch` `Chips` `Alert` `Button` `app.Modal` |
-| uikit | `Button` `Dropdown` `Badge` `Pill` `Avatar` `Rating` `Chips` `Spinner` `Donut` `Hint` `Alert` `BarChart` `LineChart` `Stepper` `Tree` `Player` `Skeleton` |
-| widgets | `Input` `Number` `Password` `Email` `Search` `Selector` `Range` `Switch` `Checkbox` `Radios` `Calendar` `CodeView` `Chat` `Tabs` `ScrollList` `Accordion` `Breadcrumb` `Pagination` |
-| logs | `Logs` with level colors |
-| settings | `KeyValue` `Switch` language and theme pickers |
+| `1` buttons | buttons, icon buttons, dropdown, tabs, command palette |
+| `2` inputs | text, number, password, email, **text area**, switch, checkbox, search, set-from-code |
+| `3` pickers | selector, autocomplete, range, radios, **calendar** |
+| `4` tables | data table with zebra rows, selection, row **edit/delete** actions, footer, pager |
+| `5` lists | **tree**, accordion, 1000-row scroll list, key/value, chips, badges, rating |
+| `6` feedback | four alert kinds, toasts, modal, progress, gauge, spinner, skeleton |
+| `7` charts | bar chart, sparkline, line chart, gauges, donuts, stat cards |
+| `8` media | **picture viewer** with zoom, picture as a **backdrop**, **video player**, **music player** with queue and equalizer |
+| `9` motion | marquee, typewriter, blink, pulse, wave, equalizer, spinner |
+| `0` layout | rows, columns, wrapping grid, split, scroll in both directions, centering |
+| `i` icons | all 70 icons, in buttons and list rows |
+| `t` themes | every token swatch, dark/light/custom switching |
+
+The gallery is also the reference for laying out a real app:
+
+```
+app/main.go          wiring: theme, routes, run
+app/routes.go        the page table and the command palette
+app/shell.go         sidebar, header, theme switch
+app/demo.go          tiny helpers used by every page
+app/page_*.go        one file per page
+app/check.go         the self check behind `go run ./app check`
+```
+
+Adding a page is one file plus one line in `routes.go`.
 
 ```sh
-go run ./app snapshot 110 30                      # print a frame as text
-LANG_CODE=tk MODE=light PAGE=editor go run ./app snapshot 110 30
+go run ./app snapshot 110 30               # print a frame as text
+MODE=light PAGE=charts go run ./app snapshot 110 30
 ```
 
 ## API
@@ -234,7 +276,8 @@ app.Modal(title, body...) / app.CloseModal() / app.Toast(kind, msg) / app.Palett
 app.Focus(node) / app.Select(sel) / app.Bind(key, fn) / app.QuitOn(keys...)
 app.Theme(t) / app.ToggleTheme() / app.Tokens(edit) / app.Language(code)
 app.Animate(fps, fn) / app.Every(d, fn) / app.After(d, fn) / app.Do(fn)
-app.Size() / app.OnResize(fn) / app.Copy(text)
+app.Size() / app.OnResize(fn) / app.Copy(text)   // viewport, resize, clipboard
+app.Press(key) / app.Type(text)                  // drive the UI from code or tests
 app.UseMouse(on) / app.UseCursor(on)   // mouse capture and the real caret
 app.Render()                    // open the terminal and run
 app.Snapshot(w, h)              // render to plain text

@@ -42,6 +42,8 @@ type App struct {
 	stopCh   chan struct{}
 
 	onResize    func(int, int)
+	viewW       int
+	viewH       int
 	mouse       bool
 	cursor      bool
 	modalOpen   bool
@@ -180,6 +182,7 @@ func (a *App) Render() error {
 	a.terminal = t
 	w, h := t.Size()
 	a.screen = render.NewScreen(t.Out, w, h)
+	a.resize(w, h)
 
 	a.frame()
 
@@ -199,6 +202,7 @@ func (a *App) Render() error {
 		case <-t.Resized():
 			w, h := t.Size()
 			a.screen.Resize(w, h)
+			a.resize(w, h)
 
 			if a.onResize != nil {
 				a.onResize(w, h)
@@ -218,8 +222,24 @@ func (a *App) Render() error {
 
 func (a *App) RenderTo(w io.Writer, width, height int) error {
 	a.screen = render.NewScreen(w, width, height)
+	a.resize(width, height)
 	a.frame()
+
 	return a.err
+}
+
+// resize tells the document how much room it has, then rebuilds a registered
+// view so pages that lay themselves out from app.Size() see the new size.
+func (a *App) resize(width, height int) {
+	if a.viewW == width && a.viewH == height {
+		return
+	}
+
+	a.viewW, a.viewH = width, height
+
+	if a.view != nil {
+		a.HTML(a.view())
+	}
 }
 
 func (a *App) Root() *dom.Node { return a.root }
@@ -323,6 +343,9 @@ func (a *App) UseCursor(on bool) *App {
 }
 
 func (a *App) Size() (int, int) {
+	if a.viewW > 0 && a.viewH > 0 {
+		return a.viewW, a.viewH
+	}
 	if a.screen != nil {
 		return a.screen.Size()
 	}
@@ -345,6 +368,23 @@ func (a *App) Copy(text string) *App {
 	encoded := base64.StdEncoding.EncodeToString([]byte(text))
 	fmt.Fprintf(a.screen, "\x1b]52;c;%s\x07", encoded)
 
+	return a
+}
+
+func (a *App) Press(key string) *App {
+	rune_ := rune(0)
+	if runes := []rune(key); len(runes) == 1 {
+		rune_ = runes[0]
+	}
+
+	a.handleKey(term.Key{Name: strings.ToLower(key), Rune: rune_})
+	return a
+}
+
+func (a *App) Type(text string) *App {
+	for _, r := range text {
+		a.Press(string(r))
+	}
 	return a
 }
 
@@ -415,6 +455,8 @@ func (a *App) Diagnostics() []style.Diagnostic {
 }
 
 func (a *App) Snapshot(width, height int) string {
+	a.resize(width, height)
+
 	tree := a.build(width, height)
 	if tree == nil {
 		return ""
@@ -450,6 +492,8 @@ func (a *App) Snapshot(width, height int) string {
 }
 
 func (a *App) build(width, height int) *layout.Box {
+	a.viewW, a.viewH = width, height
+
 	a.mu.Lock()
 	a.diags = a.diags[:0]
 	tree := layout.Build(a.root, a.base, &a.diags)

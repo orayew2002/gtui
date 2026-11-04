@@ -130,6 +130,8 @@ func Range(class, name string, min, max, step, value int) Component {
 	}
 }
 
+const dropdownRows = 6
+
 func Selector(class, name, placeholder string, options ...string) Component {
 	return Component{
 		class: class,
@@ -149,10 +151,10 @@ func Selector(class, name, placeholder string, options ...string) Component {
 			wrap.Set("query", "")
 
 			head := dom.NewElement("div")
-			head.Set("class", "row gap-1 focusable nowrap")
+			head.Set("class", "row gap-1 rounded border-line px-1 focusable focus:border-accent")
 
-			list := dom.NewElement("div")
-			list.Set("class", "col none")
+			panel := dom.NewElement("div")
+			panel.Set("class", "col none rounded border-line bg-panel")
 
 			cursor := 0
 
@@ -171,71 +173,46 @@ func Selector(class, name, placeholder string, options ...string) Component {
 				return out
 			}
 
-			var render func()
-
-			render = func() {
-				open := !list.HasClass("none")
-
-				head.Clear()
-				caption := wrap.Get("value")
-				if caption == "" {
-					caption = placeholder
-				}
-				if open && wrap.Get("query") != "" {
-					caption = wrap.Get("query")
-				}
-
-				text := dom.NewElement("div")
-				text.Set("class", "grow nowrap")
-				text.Append(dom.NewText(caption))
-
-				mark := dom.NewElement("div")
-				mark.Set("class", "nowrap dim")
-				if open {
-					mark.Append(dom.NewText("⌕"))
-				} else {
-					mark.Append(dom.NewText("▾"))
-				}
-
-				head.Append(text)
-				head.Append(mark)
-
-				list.Clear()
+			render := func() {
+				open := !panel.HasClass("none")
 				found := matches()
 
-				if len(found) == 0 {
-					empty := dom.NewElement("div")
-					empty.Set("class", "px-1 nowrap dim")
-					empty.Append(dom.NewText("no matches"))
-					list.Append(empty)
+				cursor = clamp(cursor, 0, max(0, len(found)-1))
+
+				head.Clear()
+				head.Append(text("grow nowrap", headLabel(wrap, placeholder, open)))
+				head.Append(text("nowrap dim", caretGlyph(open)))
+
+				panel.Clear()
+				if !open {
 					return
 				}
 
-				if cursor >= len(found) {
-					cursor = len(found) - 1
-				}
-				if cursor < 0 {
-					cursor = 0
+				panel.Append(text("px-1 nowrap dim", "⌕ "+queryLabel(wrap)))
+
+				if len(found) == 0 {
+					panel.Append(text("px-1 nowrap dim", "no matches"))
+					return
 				}
 
-				for i, option := range found {
-					row := dom.NewElement("div")
-					class := "px-1 nowrap"
-					if i == cursor {
-						class += " bg-raised bold"
-					}
-					row.Set("class", class)
-					row.Append(dom.NewText(option))
-					list.Append(row)
+				first := clamp(cursor-dropdownRows+1, 0, max(0, len(found)-dropdownRows))
+
+				for i := first; i < len(found) && i < first+dropdownRows; i++ {
+					panel.Append(optionRow(found[i], i == cursor))
+				}
+
+				if len(found) > dropdownRows {
+					panel.Append(text("px-1 nowrap dim", itoa(cursor+1)+" / "+itoa(len(found))))
 				}
 			}
 
 			setOpen := func(open bool) {
 				if open {
-					list.RemoveClass("none")
+					panel.RemoveClass("none")
 				} else {
-					list.AddClass("none")
+					panel.AddClass("none")
 					wrap.Set("query", "")
+					cursor = 0
 				}
 				render()
 			}
@@ -251,14 +228,14 @@ func Selector(class, name, placeholder string, options ...string) Component {
 			}
 
 			head.On("click", func(e *Event) {
-				setOpen(list.HasClass("none"))
+				setOpen(panel.HasClass("none"))
 				if a != nil {
 					a.Redraw()
 				}
 			})
 
 			head.On("keydown", func(e *Event) {
-				open := !list.HasClass("none")
+				open := !panel.HasClass("none")
 
 				switch {
 				case e.Key == "enter":
@@ -285,11 +262,7 @@ func Selector(class, name, placeholder string, options ...string) Component {
 
 				case e.Key == "backspace" && open:
 					e.StopPropagation()
-					query := wrap.Get("query")
-					if query != "" {
-						runes := []rune(query)
-						wrap.Set("query", string(runes[:len(runes)-1]))
-					}
+					trimQuery(wrap)
 					cursor = 0
 					render()
 
@@ -313,11 +286,199 @@ func Selector(class, name, placeholder string, options ...string) Component {
 
 			render()
 			wrap.Append(head)
-			wrap.Append(list)
+			wrap.Append(panel)
 
 			return wrap
 		},
 	}
+}
+
+func Autocomplete(class, name, placeholder string, options ...string) Component {
+	return Component{
+		class: class,
+		build: func(a *App) *Node {
+			base, id := splitClass(class)
+			base = withClass(base, "col")
+
+			wrap := dom.NewElement("div")
+			if base != "" {
+				wrap.Set("class", base)
+			}
+			if id != "" {
+				wrap.Set("id", id)
+			}
+			wrap.Set("name", name)
+
+			input := Search("rounded border-line px-1 focus:border-accent", name, placeholder).node(a)
+			panel := dom.NewElement("div")
+			panel.Set("class", "col none rounded border-line bg-panel")
+
+			cursor := 0
+
+			matches := func() []string {
+				query := strings.ToLower(input.Get("value"))
+				if query == "" {
+					return nil
+				}
+
+				out := make([]string, 0, len(options))
+				for _, option := range options {
+					if strings.Contains(strings.ToLower(option), query) {
+						out = append(out, option)
+					}
+				}
+				return out
+			}
+
+			render := func() {
+				found := matches()
+				cursor = clamp(cursor, 0, max(0, len(found)-1))
+
+				panel.Clear()
+
+				if input.Get("value") == "" || !input.State.Focus {
+					panel.AddClass("none")
+					return
+				}
+
+				panel.RemoveClass("none")
+
+				if len(found) == 0 {
+					panel.Append(text("px-1 nowrap dim", "no matches"))
+					return
+				}
+
+				for i := 0; i < len(found) && i < dropdownRows; i++ {
+					panel.Append(optionRow(found[i], i == cursor))
+				}
+			}
+
+			accept := func() {
+				found := matches()
+				if cursor >= len(found) {
+					return
+				}
+
+				input.Set("value", found[cursor])
+				setCaret(input, len([]rune(found[cursor])))
+				paintField(input)
+
+				panel.Clear()
+				panel.AddClass("none")
+
+				wrap.Set("value", found[cursor])
+				wrap.Dispatch(&dom.Event{Type: "change", Target: wrap, Value: found[cursor]})
+			}
+
+			input.On("input", func(e *Event) {
+				wrap.Set("value", input.Get("value"))
+				cursor = 0
+				render()
+			})
+
+			input.On("focus", func(e *Event) { render() })
+			input.On("blur", func(e *Event) {
+				panel.Clear()
+				panel.AddClass("none")
+			})
+
+			input.On("keydown", func(e *Event) {
+				switch {
+				case e.Key == "down":
+					e.StopPropagation()
+					cursor++
+					render()
+				case e.Key == "up":
+					e.StopPropagation()
+					cursor--
+					render()
+				case e.Key == "enter":
+					e.StopPropagation()
+					accept()
+				case e.Key == "esc":
+					e.StopPropagation()
+					panel.Clear()
+					panel.AddClass("none")
+				default:
+					return
+				}
+
+				if a != nil {
+					a.Redraw()
+				}
+			})
+
+			wrap.Append(input)
+			wrap.Append(panel)
+			render()
+
+			return wrap
+		},
+	}
+}
+
+func optionRow(option string, active bool) *Node {
+	class, mark := "row gap-1 px-1", " "
+	if active {
+		class, mark = "row gap-1 px-1 bg-accent text-canvas bold", "›"
+	}
+
+	row := dom.NewElement("div")
+	row.Set("class", class)
+	row.Append(text("w-1 nowrap", mark))
+	row.Append(text("grow nowrap", option))
+
+	return row
+}
+
+func text(class, content string) *Node {
+	n := dom.NewElement("div")
+	if class != "" {
+		n.Set("class", class)
+	}
+	n.Append(dom.NewText(content))
+	return n
+}
+
+func headLabel(wrap *Node, placeholder string, open bool) string {
+	if open && wrap.Get("query") != "" {
+		return wrap.Get("query")
+	}
+	if value := wrap.Get("value"); value != "" {
+		return value
+	}
+	return placeholder
+}
+
+func queryLabel(wrap *Node) string {
+	if query := wrap.Get("query"); query != "" {
+		return query
+	}
+	return "type to filter"
+}
+
+func trimQuery(wrap *Node) {
+	query := wrap.Get("query")
+	if query == "" {
+		return
+	}
+
+	runes := []rune(query)
+	wrap.Set("query", string(runes[:len(runes)-1]))
+}
+
+func caretGlyph(open bool) string {
+	if open {
+		return "⌃"
+	}
+	return "⌄"
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func Calendar(class, name string, start time.Time) Component {
@@ -346,64 +507,46 @@ func Calendar(class, name string, start time.Time) Component {
 				n.Clear()
 
 				head := dom.NewElement("div")
-				head.Set("class", "row gap-1")
-
-				prev := dom.NewElement("div")
-				prev.Set("class", "nowrap dim")
-				prev.Append(dom.NewText("‹"))
-
-				title := dom.NewElement("div")
-				title.Set("class", "grow text-center nowrap bold")
-				title.Append(dom.NewText(day.Format("January 2006")))
-
-				next := dom.NewElement("div")
-				next.Set("class", "nowrap dim")
-				next.Append(dom.NewText("›"))
-
-				head.Append(prev)
-				head.Append(title)
-				head.Append(next)
+				head.Set("class", "row gap-1 border-b border-line")
+				head.Append(text("nowrap dim", "‹"))
+				head.Append(text("grow text-center nowrap bold", day.Format("January 2006")))
+				head.Append(text("nowrap dim", "›"))
 				n.Append(head)
 
 				week := dom.NewElement("div")
 				week.Set("class", "row gap-1")
-				for _, label := range []string{"mo", "tu", "we", "th", "fr", "sa", "su"} {
-					cell := dom.NewElement("div")
-					cell.Set("class", "w-2 nowrap dim")
-					cell.Append(dom.NewText(label))
-					week.Append(cell)
+				for i, label := range []string{"mo", "tu", "we", "th", "fr", "sa", "su"} {
+					class := "w-2 text-right nowrap dim"
+					if i >= 5 {
+						class = "w-2 text-right nowrap dim text-danger"
+					}
+					week.Append(text(class, label))
 				}
 				n.Append(week)
 
+				today := time.Now()
 				first := time.Date(day.Year(), day.Month(), 1, 0, 0, 0, 0, day.Location())
-				offset := (int(first.Weekday()) + 6) % 7
-				cursor := first.AddDate(0, 0, -offset)
+				cursor := first.AddDate(0, 0, -((int(first.Weekday()) + 6) % 7))
 
 				for range 6 {
 					row := dom.NewElement("div")
 					row.Set("class", "row gap-1")
 
 					for range 7 {
-						cell := dom.NewElement("div")
-						class := "w-2 nowrap"
-
-						switch {
-						case cursor.Month() != day.Month():
-							class += " dim"
-						case cursor.Day() == day.Day():
-							class += " bg-accent text-canvas bold"
-						}
-
-						cell.Set("class", class)
-						cell.Append(dom.NewText(strconv.Itoa(cursor.Day())))
-						row.Append(cell)
-
+						row.Append(text(dayClass(cursor, day, today), strconv.Itoa(cursor.Day())))
 						cursor = cursor.AddDate(0, 0, 1)
 					}
 
 					n.Append(row)
 				}
+
+				foot := dom.NewElement("div")
+				foot.Set("class", "row gap-1 border-t border-line")
+				foot.Append(text("grow nowrap text-accent bold", day.Format("Mon 02.01.2006")))
+				foot.Append(text("nowrap dim", "←→ ↑↓ ⇞⇟"))
+				n.Append(foot)
 			}
+
 			render()
 
 			move := func(days, months int) {
@@ -445,6 +588,27 @@ func Calendar(class, name string, start time.Time) Component {
 			return n
 		},
 	}
+}
+
+func dayClass(cell, selected, today time.Time) string {
+	class := "w-2 text-right nowrap"
+
+	switch {
+	case sameDay(cell, selected):
+		return class + " bg-accent text-canvas bold"
+	case cell.Month() != selected.Month():
+		return class + " dim"
+	case sameDay(cell, today):
+		return class + " text-accent bold underline"
+	case cell.Weekday() == time.Saturday, cell.Weekday() == time.Sunday:
+		return class + " text-danger"
+	}
+
+	return class
+}
+
+func sameDay(a, b time.Time) bool {
+	return a.Year() == b.Year() && a.Month() == b.Month() && a.Day() == b.Day()
 }
 
 func Switch(class, name, label string, on bool) Component {

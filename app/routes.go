@@ -2,85 +2,80 @@ package main
 
 import "github.com/orayew2002/gtui"
 
-type route struct {
-	Section string
-	Key     string
-	Label   string
-	Page    func() gtui.Component
-	Action  string
+type page struct {
+	Key   string
+	Title string
+	About string
+	Body  func() gtui.Component
 }
 
-// routes is a function, not a variable, so pages are free to navigate back
-// through it without creating an initialisation cycle.
-func routes() []route {
-	return []route{
-		{Section: "sections.main", Key: "1", Label: "home", Page: pageHome},
-		{Key: "y", Label: "dynamic", Page: pageDynamic},
-
-		{Section: "sections.content", Key: "2", Label: "movies", Page: pageMovies, Action: "create"},
-		{Key: "3", Label: "serials", Page: pageSerials, Action: "create"},
-		{Key: "4", Label: "books", Page: pageBooks, Action: "create"},
-		{Key: "5", Label: "songs", Page: pageSongs, Action: "create"},
-		{Key: "6", Label: "editor", Page: pageForm, Action: "save"},
-
-		{Section: "sections.system", Key: "u", Label: "uikit", Page: pageUIKit},
-		{Key: "i", Label: "widgets", Page: pageWidgets},
-		{Key: "s", Label: "storages", Page: pageStorages, Action: "create"},
-		{Key: "l", Label: "logs", Page: pageLogs, Action: "export"},
-		{Key: "g", Label: "settings", Page: pageSettings, Action: "save"},
+// pages is the whole gallery. Add a component demo by adding one entry here
+// and one function in its own file.
+func pages() []page {
+	return []page{
+		{Key: "1", Title: "buttons", About: "buttons, links, dropdowns and the command palette", Body: pageButtons},
+		{Key: "2", Title: "inputs", About: "text, number, password, area, checkbox, switch", Body: pageInputs},
+		{Key: "3", Title: "pickers", About: "selector, autocomplete, range, radios, calendar", Body: pagePickers},
+		{Key: "4", Title: "tables", About: "data tables with zebra rows, actions and a pager", Body: pageTables},
+		{Key: "5", Title: "lists", About: "trees, accordions, scroll lists and key/value rows", Body: pageLists},
+		{Key: "6", Title: "feedback", About: "alerts, toasts, modals, progress and spinners", Body: pageFeedback},
+		{Key: "7", Title: "charts", About: "bars, sparklines, line charts, gauges and donuts", Body: pageCharts},
+		{Key: "8", Title: "media", About: "pictures, backdrops, video and music players", Body: pageMedia},
+		{Key: "9", Title: "motion", About: "animated text, pulses, waves and tickers", Body: pageMotion},
+		{Key: "0", Title: "layout", About: "rows, columns, grids, splits and scrolling", Body: pageLayout},
+		{Key: "i", Title: "icons", About: "every icon the framework ships", Body: pageIcons},
+		{Key: "t", Title: "themes", About: "theme tokens and the light and dark palettes", Body: pageThemes},
 	}
 }
 
-var activeLabel = "home"
+var currentKey = "1"
 
-func active() route {
-	for _, item := range routes() {
-		if item.Label == activeLabel {
+func current() page {
+	for _, item := range pages() {
+		if item.Key == currentKey {
 			return item
 		}
 	}
-	return routes()[0]
+	return pages()[0]
 }
 
-func show(label string) {
-	for _, item := range routes() {
-		if item.Label == label {
-			activeLabel = label
+// goTo switches the page by title, which is what the palette and the snapshot
+// mode use.
+func goTo(title string) {
+	for _, item := range pages() {
+		if item.Title == title {
+			currentKey = item.Key
 			return
 		}
 	}
 }
 
-// open switches the page, the header and the selected nav item together.
-func open(label string) {
-	show(label)
-	item := active()
-
-	app.Open("#main", item.Page())
-	app.Open("#head", header(item)...)
-	app.Select("#nav" + item.Key)
-}
-
 func onNavigate(e *gtui.Event) {
-	for _, item := range routes() {
+	for _, item := range pages() {
 		if e.Target.Get("id") == "nav"+item.Key {
-			show(item.Label)
+			currentKey = item.Key
 			app.Open("#head", header(item)...)
 		}
 	}
 }
 
 func openPalette() {
-	actions := make([]gtui.Action, 0, 12)
+	actions := make([]gtui.Action, 0, len(pages()))
 
-	for _, item := range routes() {
-		label := item.Label
-		actions = append(actions, gtui.Action{
-			Key:   item.Key,
-			Label: gtui.T(label),
-			Run:   func() { open(label) },
-		})
+	for _, item := range pages() {
+		title := item.Title
+		actions = append(actions, gtui.Action{Key: item.Key, Label: title, Run: func() {
+			goTo(title)
+			show(current())
+		}})
 	}
 
-	app.Palette(gtui.T("search"), actions...)
+	app.Palette("go to", actions...)
+}
+
+// show swaps the page, the header and the selected nav item together.
+func show(item page) {
+	app.Open("#main", item.Body())
+	app.Open("#head", header(item)...)
+	app.Select("#nav" + item.Key)
 }

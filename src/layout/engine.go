@@ -105,6 +105,23 @@ func finishCanvas(b *Box, contentW, canvasH, availH int) {
 	b.ContentW, b.ContentH = contentW, contentH
 	b.OuterW = contentW + ins.Horizontal()
 	b.OuterH = contentH + ins.Vertical()
+
+	// A canvas can also be a backdrop: lay its children out inside it so an
+	// image can sit behind ordinary content.
+	if len(b.Children) == 0 {
+		return
+	}
+
+	switch st.Display {
+	case style.DisplayFlex:
+		measureFlex(b, contentW, contentH, true)
+	default:
+		measureBlock(b, contentW, contentH)
+	}
+
+	b.ContentW, b.ContentH = contentW, contentH
+	b.OuterW = contentW + ins.Horizontal()
+	b.OuterH = contentH + ins.Vertical()
 }
 
 func finish(b *Box, contentW, availW, availH int) {

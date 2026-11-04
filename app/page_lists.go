@@ -2,101 +2,72 @@ package main
 
 import "github.com/orayew2002/gtui"
 
-func pageMovies() gtui.Component {
-	data := make([][]gtui.Component, 0, len(movieRows))
-
-	for _, item := range movieRows {
-		state := "off"
-		if item.Active {
-			state = "on"
-		}
-
-		data = append(data, cells(
-			item.Title, item.Storage, item.Duration, item.Size, item.Status, state, item.Tracks,
-		))
-	}
-
-	cols := []gtui.Col{
-		col("name", "w-1/4", false),
-		col("storage", "w-10", false),
-		col("duration", "w-8", false),
-		col("size", "w-8", true),
-		col("status", "w-12", false),
-		col("active", "w-6", false),
-		col("tracks", "grow", true),
-	}
-
-	titles := make([]string, 0, len(movieRows))
-	for _, item := range movieRows {
-		titles = append(titles, item.Title)
-	}
-
-	return listPage("f", cols, data, gtui.T("pager", 1284, 1, 92), titles)
-}
-
-func pageSerials() gtui.Component {
-	cols := []gtui.Col{
-		col("name", "w-1/4", false),
-		{Label: gtui.T("col.seasons"), Width: "w-8", Right: true},
-		{Label: gtui.T("col.episodes"), Width: "w-10", Right: true},
-		col("size", "w-8", true),
-		col("status", "w-12", false),
-		col("active", "grow", true),
-	}
-
-	return listPage("f", cols, rows(serialRows), gtui.T("pager", 96, 1, 7), names(serialRows))
-}
-
-func pageBooks() gtui.Component {
-	cols := []gtui.Col{
-		col("name", "w-1/4", false),
-		{Label: gtui.T("col.reader"), Width: "w-14", Right: false},
-		{Label: gtui.T("col.chapters"), Width: "w-10", Right: true},
-		col("size", "w-8", true),
-		col("status", "w-12", false),
-		col("active", "grow", true),
-	}
-
-	return listPage("f", cols, rows(bookRows), gtui.T("pager", 317, 1, 22), names(bookRows))
-}
-
-func pageSongs() gtui.Component {
-	cols := []gtui.Col{
-		col("name", "w-1/4", false),
-		{Label: gtui.T("col.singer"), Width: "w-14"},
-		{Label: gtui.T("col.album"), Width: "w-12"},
-		col("duration", "w-8", true),
-		{Label: gtui.T("col.plays"), Width: "w-10", Right: true},
-		col("active", "grow", true),
-	}
-
-	return listPage("f", cols, rows(songRows), gtui.T("pager", 8942, 1, 596), names(songRows))
-}
-
-func pageStorages() gtui.Component {
-	cols := []gtui.Col{
-		col("name", "w-1/4", false),
-		{Label: gtui.T("col.mount"), Width: "w-16"},
-		col("size", "w-10", true),
-		{Label: gtui.T("col.used"), Width: "w-10", Right: true},
-		col("status", "grow", false),
-	}
-
-	return listPage("f", cols, rows(storageRows), gtui.T("pager", 4, 1, 1), names(storageRows))
-}
-
-func pageLogs() gtui.Component {
-	lines := make([]string, 0, len(logLines)*4)
-	stamps := make([]string, 0, len(logLines)*4)
-
-	for range 4 {
-		for _, line := range logLines {
-			lines = append(lines, line.Text)
-			stamps = append(stamps, line.Time)
-		}
-	}
-
-	return gtui.Column("grow rounded border-line bg-panel px-1 key-f",
-		gtui.Logs("", lines, stamps),
+func pageLists() gtui.Component {
+	return gtui.Column("grow gap-1",
+		gtui.Row("gap-1 grow",
+			card("a", "tree",
+				note("enter or click folds a branch"),
+				gtui.Tree("",
+					gtui.Node2{Label: "project", Open: true, Children: []gtui.Node2{
+						{Label: "cmd", Children: []gtui.Node2{{Label: "main.go"}}},
+						{Label: "internal", Children: []gtui.Node2{
+							{Label: "store", Children: []gtui.Node2{{Label: "db.go"}}},
+							{Label: "api.go"},
+						}},
+						{Label: "README.md"},
+					}},
+				),
+			),
+			card("b", "accordion",
+				note("enter opens one section"),
+				gtui.Accordion("",
+					gtui.Section{Title: "general", Open: true, Body: []gtui.Component{
+						gtui.KeyValue("", [2]string{"theme", "dark"}, [2]string{"width", "120"}),
+					}},
+					gtui.Section{Title: "advanced", Body: []gtui.Component{
+						gtui.Text("text-muted", "hidden until you open it"),
+					}},
+					gtui.Section{Title: "about", Body: []gtui.Component{
+						gtui.Text("text-muted", "gtui gallery"),
+					}},
+				),
+			),
+			card("d", "scroll list",
+				note("1000 rows, only the visible ones are built"),
+				gtui.ScrollList("#big-list", 8, 1000, func(i int) gtui.Component {
+					return gtui.Row("gap-1",
+						gtui.Text("w-6 dim nowrap", "%04d", i),
+						gtui.Text("grow nowrap", "row number %d", i),
+					)
+				}),
+				gtui.Hint("", "↑↓", "scroll after jumping here"),
+			),
+		),
+		gtui.Row("gap-1",
+			card("e", "key and value",
+				gtui.KeyValue("",
+					[2]string{"framework", "gtui"},
+					[2]string{"language", "go"},
+					[2]string{"license", "MIT"},
+				),
+			),
+			card("f", "chips and badges",
+				gtui.Chips("", "go", "tui", "flexbox", "ansi"),
+				gtui.Row("gap-1 items-center",
+					gtui.Badge("bg-accent text-canvas", " new "),
+					gtui.Badge("bg-success text-canvas", " 12 "),
+					gtui.Avatar("bg-accent text-canvas", "Ada Lovelace"),
+					gtui.Rating("", 4, 5),
+				),
+			),
+			card("g", "list rows",
+				gtui.List("",
+					gtui.ListItem("", "first", "1"),
+					gtui.ListItem("", "second", "2"),
+					gtui.ListItem("", "third", "3"),
+				),
+				gtui.Breadcrumb("text-muted", "gallery", "lists", "rows"),
+			),
+		),
 	)
 }

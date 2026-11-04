@@ -9,20 +9,22 @@ import (
 	"github.com/orayew2002/gtui/src/colors"
 )
 
+// app is the single application handle every page uses.
 var app *gtui.App
 
 func main() {
-	loadLanguages()
-
 	app = gtui.Init().Theme(colors.Dark)
 	app.View(shell)
 
 	app.On("click", onNavigate)
 	app.Bind("ctrl+p", openPalette)
+	app.Animate(8, onTick)
 
-	app.Select("#nav" + active().Key)
-	startTicker()
+	app.Select("#nav" + current().Key)
 
+	if check() {
+		return
+	}
 	if snapshot() {
 		return
 	}
@@ -30,19 +32,8 @@ func main() {
 	app.Render()
 }
 
-func loadLanguages() {
-	for _, dir := range []string{"app/locales", "locales"} {
-		if err := gtui.LoadLanguages(dir); err == nil {
-			gtui.SetFallback("en")
-			gtui.SetLanguage("en")
-			return
-		}
-	}
-
-	fmt.Fprintln(os.Stderr, "gtui: locales not found")
-	os.Exit(1)
-}
-
+// snapshot prints one frame as text instead of starting the terminal, which
+// makes the gallery easy to check from a script: go run ./app snapshot 110 30
 func snapshot() bool {
 	if len(os.Args) != 4 || os.Args[1] != "snapshot" {
 		return false
@@ -51,18 +42,15 @@ func snapshot() bool {
 	width, _ := strconv.Atoi(os.Args[2])
 	height, _ := strconv.Atoi(os.Args[3])
 
-	if code := os.Getenv("LANG_CODE"); code != "" {
-		gtui.SetLanguage(code)
-	}
 	if os.Getenv("MODE") == "light" {
 		app.Theme(colors.Light)
 	}
-	if label := os.Getenv("PAGE"); label != "" {
-		show(label)
+	if page := os.Getenv("PAGE"); page != "" {
+		goTo(page)
 	}
 
 	app.Refresh()
-	app.Select("#nav" + active().Key)
+	app.Select("#nav" + current().Key)
 
 	fmt.Println(app.Snapshot(width, height))
 	return true

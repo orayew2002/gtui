@@ -134,9 +134,10 @@ func Donut(class string, value, max float64) Component {
 	return Text(join("nowrap", class), glyphs[clampInt(step, 0, len(glyphs)-1)])
 }
 
-func canvasComponent(class string, canvas *dom.Canvas) Component {
+func canvasComponent(class string, canvas *dom.Canvas, child ...Component) Component {
 	return Component{
 		class: class,
+		child: child,
 		build: func(a *App) *Node {
 			n := dom.NewElement("div")
 
@@ -149,6 +150,11 @@ func canvasComponent(class string, canvas *dom.Canvas) Component {
 			}
 
 			n.Canvas = canvas
+
+			for _, item := range child {
+				n.Append(item.node(a))
+			}
+
 			return n
 		},
 	}
